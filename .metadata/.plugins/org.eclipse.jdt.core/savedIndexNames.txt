@@ -1,0 +1,17 @@
+INDEX VERSION 1.134+C:\Informatikstudium\Bachelorarbeit\DUUI\.metadata\.plugins\org.eclipse.jdt.core
+664316697.index
+879950909.index
+1749178012.index
+1307284189.index
+3820088777.index
+39544307.index
+70499939.index
+1865797976.index
+328071358.index
+2000413904.index
+3215687612.index
+2559382393.index
+2803133005.index
+260084557.index
+3428852174.index
+3183580262.index

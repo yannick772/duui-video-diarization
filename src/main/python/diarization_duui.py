@@ -422,9 +422,11 @@ def process_selection(model_name, model_data, selection, doc_len, batch_size, ig
     #         selfState[name].copy_(param)
 
 def process_video(video: UimaVideo):
-    cmd = "python demoTalkNet.py --videoName "+ video.name
-    subprocess.run(cmd)
-    visualization_json_format(video.name)
+    cmd = "python Columbia_test.py --videoName "+ video.name
+    pth = os.path.dirname(os.path.dirname(os.path.realpath(__file__)))
+    pth = os.path.join(pth, "Light-ASD-main");
+    subprocess.run(cmd, cwd=pth)
+    return visualization_json_format(video.name)
 
 # def load_model():
 #     model_path = "pretrain_TalkSet.model"

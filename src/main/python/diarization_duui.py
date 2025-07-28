@@ -165,12 +165,18 @@ def post_process(request: TextImagerRequest) -> TextImagerResponse:
 
         # processed_video = process_video(request.model_name, model_data, request.video)
         processed_video = process_video(request.video)
-
+        
+        video_diarization = VideoDiarization(
+           video = request.video
+            # sentences = processed_sentences
+            json = processed_video 
+        )
         
         processed_selections.append(
             VideoDiarization(
-                # video = 
+                video = request.video
                 # sentences = processed_sentences
+                json = processed_video
             )
             # SentimentSelection(
             #     selection=selection.selection,
@@ -207,7 +213,7 @@ def post_process(request: TextImagerRequest) -> TextImagerResponse:
     clean_cuda_cache()
 
     return TextImagerResponse(
-        selections=processed_selections,
+        diarization=video_diarization,
         meta=meta,
         modification_meta=modification_meta
     )

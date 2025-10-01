@@ -11,6 +11,7 @@ from threading import Lock
 from time import time
 from typing import Dict, Union
 from datetime import datetime
+import base64
 
 from cassis import load_typesystem
 from fastapi import FastAPI, Response
@@ -54,19 +55,21 @@ logger.info("Version: %s", settings.textimager_duui_transformers_sentiment_annot
 device = 0 if torch.cuda.is_available() else -1
 logger.info(f'USING {device}')
 
-typesystem_filename = 'resources/TypeSystemDiarization.xml'
-logger.info("Loading typesystem from \"%s\"", typesystem_filename)
-with open(typesystem_filename, 'rb') as f:
-    typesystem = load_typesystem(f)
-    logger.debug("Base typesystem:")
-    logger.debug(typesystem.to_xml())
+parent_dir = os.path.dirname(os.path.dirname(os.path.realpath(__file__)))
 
-lua_communication_script_filename = "lua/duui_diarization.lua"
-logger.info("Loading Lua communication script from \"%s\"", lua_communication_script_filename)
-with open(lua_communication_script_filename, 'rb') as f:
-    lua_communication_script = f.read().decode("utf-8")
-    logger.debug("Lua communication script:")
-    logger.debug(lua_communication_script)
+# typesystem_filename = parent_dir + '/resources/TypeSystemDiarization.xml'
+# logger.info("Loading typesystem from \"%s\"", typesystem_filename)
+# with open(typesystem_filename, 'rb') as f:
+#     typesystem = load_typesystem(f)
+#     logger.debug("Base typesystem:")
+#     logger.debug(typesystem.to_xml())
+
+# lua_communication_script_filename = parent_dir + "/lua/duui_diarization.lua"
+# logger.info("Loading Lua communication script from \"%s\"", lua_communication_script_filename)
+# with open(lua_communication_script_filename, 'rb') as f:
+#     lua_communication_script = f.read().decode("utf-8")
+#     logger.debug("Lua communication script:")
+#     logger.debug(lua_communication_script)
 
 app = FastAPI(
     openapi_url="/openapi.json",
@@ -153,29 +156,29 @@ def post_process(request: TextImagerRequest) -> TextImagerResponse:
         logger.debug("Received:")
         logger.debug(request)
 
-        if request.model_name not in SUPPORTED_MODELS:
-            raise Exception(f"Model \"{request.model_name}\" is not supported!")
+        # if request.model_name not in SUPPORTED_MODELS:
+        #     raise Exception(f"Model \"{request.model_name}\" is not supported!")
 
-        if request.lang not in SUPPORTED_MODELS[request.model_name]["languages"]:
-            raise Exception(f"Document language \"{request.lang}\" is not supported by model \"{request.model_name}\"!")
+        # if request.lang not in SUPPORTED_MODELS[request.model_name]["languages"]:
+        #     raise Exception(f"Document language \"{request.lang}\" is not supported by model \"{request.model_name}\"!")
 
-        logger.info("Using model: \"%s\"", request.model_name)
-        model_data = SUPPORTED_MODELS[request.model_name]
-        logger.debug(model_data)
+        # logger.info("Using model: \"%s\"", request.model_name)
+        # model_data = SUPPORTED_MODELS[request.model_name]
+        # logger.debug(model_data)
 
         # processed_video = process_video(request.model_name, model_data, request.video)
-        processed_video = process_video(request.video)
+        processed_video = process_video(request.videoBase64)
         
         video_diarization = VideoDiarization(
-           video = request.video
-            # sentences = processed_sentences
+            video = request.video,
+            # sentences = processed_sentences,
             json = processed_video 
         )
         
         processed_selections.append(
             VideoDiarization(
-                video = request.video
-                # sentences = processed_sentences
+                video = request.video,
+                # sentences = processed_sentences,
                 json = processed_video
             )
             # SentimentSelection(
@@ -188,7 +191,7 @@ def post_process(request: TextImagerRequest) -> TextImagerResponse:
             name=settings.textimager_duui_transformers_sentiment_annotator_name,
             version=settings.textimager_duui_transformers_sentiment_annotator_version,
             modelName=request.model_name,
-            modelVersion=model_data["version"],
+            # modelVersion=model_data["version"],
         )
 
         modification_meta_comment = f"{settings.textimager_duui_transformers_sentiment_annotator_name} ({settings.textimager_duui_transformers_sentiment_annotator_version})"
@@ -202,9 +205,9 @@ def post_process(request: TextImagerRequest) -> TextImagerResponse:
         logger.exception(ex)
 
     #logger.debug(processed_selections)
-    for ps in processed_selections:
-        for s in ps.sentences:
-            logger.debug(s)
+    # for ps in processed_selections:
+    #     for s in ps.sentences:
+    #         logger.debug(s)
 
     dte = datetime.now()
     print(dte, 'Finished processing', flush=True)
@@ -213,7 +216,8 @@ def post_process(request: TextImagerRequest) -> TextImagerResponse:
     clean_cuda_cache()
 
     return TextImagerResponse(
-        diarization=video_diarization,
+        # diarization=video_diarization,
+        json=processed_video,
         meta=meta,
         modification_meta=modification_meta
     )
@@ -427,12 +431,20 @@ def process_selection(model_name, model_data, selection, doc_len, batch_size, ig
     #             continue
     #         selfState[name].copy_(param)
 
-def process_video(video: UimaVideo):
-    cmd = "python Columbia_test.py --videoName "+ video.name
-    pth = os.path.dirname(os.path.dirname(os.path.realpath(__file__)))
-    pth = os.path.join(pth, "Light-ASD-main");
-    subprocess.run(cmd, cwd=pth)
-    return visualization_json_format(video.name)
+def process_video(videoBase64: str):
+    lightasd_pth = os.path.join(parent_dir, "Light-ASD-main")
+    video_name = "test-video"
+    generate_video_from_base64(videoBase64, video_name, lightasd_pth)
+    cmd = "python Columbia_test.py --videoName "+ video_name
+    logger.debug("Processing Video")
+    retcode = subprocess.call(cmd, cwd=lightasd_pth)
+    logger.debug("Video Processed")
+    return visualization_json_format(video_name)
+
+def generate_video_from_base64(base64: str, name: str):
+    video_file = open(parent_dir + "/recources/" + name + ".mp4", "wb")
+    video_file.write(base64.b64decode(base64))
+    video_file.close()
 
 # def load_model():
 #     model_path = "pretrain_TalkSet.model"

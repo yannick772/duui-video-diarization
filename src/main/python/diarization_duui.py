@@ -56,6 +56,8 @@ device = 0 if torch.cuda.is_available() else -1
 logger.info(f'USING {device}')
 
 parent_dir = os.path.dirname(os.path.dirname(os.path.realpath(__file__)))
+lightasd_pth = os.path.join(parent_dir, "Light-ASD-main")
+resources_pth = os.path.join(parent_dir, "resources")
 
 # typesystem_filename = parent_dir + '/resources/TypeSystemDiarization.xml'
 # logger.info("Loading typesystem from \"%s\"", typesystem_filename)
@@ -142,6 +144,8 @@ def clean_cuda_cache():
 
 @app.post("/v1/process")
 def post_process(request: TextImagerRequest) -> TextImagerResponse:
+    logger.debug("request content:")
+    logger.debug(request)
     processed_selections = []
     meta = None
     modification_meta = None
@@ -168,6 +172,8 @@ def post_process(request: TextImagerRequest) -> TextImagerResponse:
 
         # processed_video = process_video(request.model_name, model_data, request.video)
         processed_video = process_video(request.videoBase64)
+        logger.debug("processed video json:")
+        logger.debug(processed_video)
         
         video_diarization = VideoDiarization(
             video = request.video,
@@ -432,19 +438,24 @@ def process_selection(model_name, model_data, selection, doc_len, batch_size, ig
     #         selfState[name].copy_(param)
 
 def process_video(videoBase64: str):
-    lightasd_pth = os.path.join(parent_dir, "Light-ASD-main")
     video_name = "test-video"
-    generate_video_from_base64(videoBase64, video_name, lightasd_pth)
-    cmd = "python Columbia_test.py --videoName "+ video_name
+    if (videoBase64):
+        generate_video_from_base64(videoBase64, video_name)
+    cmd = "python Columbia_test.py --videoName "+ video_name + " --videoFolder " + resources_pth
     logger.debug("Processing Video")
     retcode = subprocess.call(cmd, cwd=lightasd_pth)
+    # sp = subprocess.Popen(cmd, cwd=lightasd_pth, shell=True, stdout=subprocess.PIPE)
+    # retcode = sp.stdout.read()
+    logger.debug(retcode)
     logger.debug("Video Processed")
     return visualization_json_format(video_name)
 
-def generate_video_from_base64(base64: str, name: str):
-    video_file = open(parent_dir + "/recources/" + name + ".mp4", "wb")
-    video_file.write(base64.b64decode(base64))
+def generate_video_from_base64(encodedStr: str, name: str):
+    logger.debug("converting video from base64 string...")
+    video_file = open(resources_pth + name + ".mp4", "wb")
+    video_file.write(base64.b64decode(encodedStr))
     video_file.close()
+    logger.debug("video generated")
 
 # def load_model():
 #     model_path = "pretrain_TalkSet.model"
@@ -455,14 +466,14 @@ def generate_video_from_base64(base64: str, name: str):
 #     loadedState = torch.load(model_path)
 #     for name, param in loadedState.items():
 
-def visualization_json_format(videoName: str, modelPath: str = "src\main\Light-ASD-main"):
+def visualization_json_format(videoName: str, videoPath: str = "resources"):
     """
     Converts the ASD into a JSON string
     """
-    path = os.path.join(modelPath, "demo/" + videoName + "/pywork", "tracks.pckl")
+    path = os.path.join(parent_dir, videoPath, videoName, "pywork", "tracks.pckl")
     fil = open(path, "rb")
     tracks = pickle.load(fil)
-    path = os.path.join(modelPath, "demo/" + videoName + "/pywork", "scores.pckl")
+    path = os.path.join(parent_dir, videoPath, videoName, "pywork", "scores.pckl")
     fil = open(path, "rb")
     scores = pickle.load(fil)
 

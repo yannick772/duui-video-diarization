@@ -1,19 +1,13 @@
 from typing import List
 from pydantic import BaseModel
 
-
-UIMA_TYPE_SENTENCE = "de.tudarmstadt.ukp.dkpro.core.api.segmentation.type.Sentence"
-UIMA_TYPE_SENTIMENT = "org.hucompute.textimager.uima.type.Sentiment"
-UIMA_TYPE_SENTIMENT_CATEGORIZED = "org.hucompute.textimager.uima.type.CategorizedSentiment"
-
-
-class UimaAnnotationMeta(BaseModel):
+class AnnotationMeta(BaseModel):
     name: str
     version: str
     modelName: str
     modelVersion: str
 
-class UimaDocumentModification(BaseModel):
+class DocumentModification(BaseModel):
     user: str
     timestamp: int
     comment: str

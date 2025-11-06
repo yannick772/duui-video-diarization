@@ -6,6 +6,7 @@ import org.apache.uima.analysis_engine.AnalysisEngineDescription;
 import org.apache.uima.cas.CASException;
 import org.apache.uima.fit.factory.AnalysisEngineFactory;
 import org.apache.uima.fit.factory.JCasFactory;
+import org.apache.uima.fit.util.JCasUtil;
 import org.apache.uima.jcas.JCas;
 import org.apache.uima.jcas.cas.FSArrayList;
 import org.apache.uima.resource.ResourceInitializationException;
@@ -20,6 +21,7 @@ import org.texttechnologylab.DockerUnifiedUIMAInterface.io.writer.TTLabXmiWriter
 import org.texttechnologylab.DockerUnifiedUIMAInterface.lua.DUUILuaContext;
 import org.texttechnologylab.DockerUnifiedUIMAInterface.lua.LuaConsts;
 import org.texttechnologylab.DockerUnifiedUIMAInterface.pipeline_storage.sqlite.DUUISqliteStorageBackend;
+import org.texttechnologylab.annotation.type.AudioToken;
 import org.xml.sax.SAXException;
 
 
@@ -31,23 +33,15 @@ import java.util.Base64;
 
 public class DUUILoader {
 
-    private int timeout;
-    private int workers;
     private JCas cas;
 
-    private String videoPath = "src/main/resources/qvijck-source.mp4";
-
-    private String outputPath = "src/main/resoutces/output";
-
     public DUUILoader() {
-        workers = 2;
-        timeout = 10000;
     }
 
     private void loadCas() {
         try {
             cas = JCasFactory.createJCas();
-            String videoName = "qvijck-source";
+            String videoName = "test-video";
             Path videoPath = Path.of("src/main/resources/"+ videoName +".mp4");
             byte[] bytes = Files.readAllBytes(videoPath);
 
@@ -56,16 +50,8 @@ public class DUUILoader {
             metaData.setDocumentUri(videoPath.toString());
             metaData.setCollectionId(videoName);
 
-            StringBuilder sb = new StringBuilder();
             String base64 = Base64.getEncoder().encodeToString(bytes);
-            VideoBase64 request = new VideoBase64(cas);
-            request.setBase64Video(base64);
-            request.setMetaData(metaData);
-            request.addToIndexes();
-            sb.append(request);
-            cas.setDocumentText(sb.toString());
-
-            cas.setDocumentLanguage("en");
+            cas.setSofaDataString(base64, "video/mp4");
 
         } catch (ResourceInitializationException e) {
             throw new RuntimeException(e);
@@ -76,57 +62,27 @@ public class DUUILoader {
         }
     }
 
-    private void process2() throws Exception {
+    private void process() throws Exception {
         DUUIComposer composer = new DUUIComposer()
+                .withWorkers(1)
                 .withSkipVerification(true)
                 .withLuaContext(new DUUILuaContext().withJsonLibrary());
         composer.addDriver(new DUUIDockerDriver());
-        composer.add(new DUUIDockerDriver.Component("docker.texttechnologylab.org/gnfinder:latest")
-                .withParameter("model", "yannickheinrich/video-diarization")
-                .withParameter("selection", "text")
-                .withImageFetching());
-        composer.run(cas);
-    }
-
-    private void process() throws Exception {
-        DUUILuaContext context = LuaConsts.getJSON();
-        DUUISqliteStorageBackend sqlite = new DUUISqliteStorageBackend("loggingSQlite.db")
-                .withConnectionPoolSize(workers);
-
-        DUUIComposer composer = new DUUIComposer().withLuaContext(context)
-                .withWorkers(workers)
-                .withStorageBackend(sqlite);
-        DUUIDockerDriver dockerDriver = new DUUIDockerDriver()
-                .withTimeout(timeout);
-        DUUIRemoteDriver remoteDriver = new DUUIRemoteDriver(timeout);
-        DUUIUIMADriver uimaDriver = new DUUIUIMADriver().withDebug(true);
-        DUUISwarmDriver swarmDriver = new DUUISwarmDriver();
-
-        composer.addDriver(dockerDriver, remoteDriver, uimaDriver, swarmDriver);
-
-        composer.add(new DUUIDockerDriver
-                .Component("docker.texttechnologylab.org/gnfinder:latest")
-                .withScale(workers)
-                .withImageFetching()
-                .withName("DuuiComposer")
+        composer.addDriver(new DUUIUIMADriver());
+        composer.addDriver(new DUUIRemoteDriver());
+        composer.add(
+            new DUUIRemoteDriver.Component("localhost:8000")
+                    .withScale(1)
+                    .withTargetView("transcript")
+                    .withParameter("language", "en")
+                    .build()
+                    .withTimeout(1000000000L)
         );
+        composer.run(cas, "duui-diarization");
 
-        composer.add(new DUUIUIMADriver.Component(
-                createEngineDescription()
-        ).withScale(workers));
-
-        composer.run(cas, "VideoDiarization");
-    }
-
-    private AnalysisEngineDescription createEngineDescription() {
-        try {
-            return AnalysisEngineFactory.createEngineDescription(
-                    TTLabXmiWriter.class,
-                    TTLabXmiWriter.PARAM_TARGET_LOCATION,
-                    outputPath
-            );
-        } catch (ResourceInitializationException e) {
-            throw new RuntimeException(e);
+        System.out.println(cas.getView("transcript").getDocumentText());
+        for (AudioToken token : JCasUtil.select(cas.getView("transcript"), AudioToken.class)) {
+            System.out.println(token.getTimeStart() + " - " + token.getTimeEnd() + " | " + token.getBegin() + " - " + token.getEnd() + ": " + token.getCoveredText());
         }
     }
 
@@ -134,7 +90,7 @@ public class DUUILoader {
         loadCas();
         System.out.println(cas);
         try {
-            process2();
+            process();
         } catch (Exception e) {
             throw new RuntimeException(e);
         }

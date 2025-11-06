@@ -1,25 +1,24 @@
 from typing import List, Optional
 from pydantic import BaseModel, ConfigDict
 
-from .diarization import VideoDiarization
+from .diarization import DiarizationResult
 
-# from .sentiment import SentimentSelection
-from .uima import UimaSentenceSelection, UimaAnnotationMeta, UimaDocumentModification, UimaVideo
+from .uima import DocumentModification
 
 
-class TextImagerRequest(BaseModel):
-    model_config = ConfigDict(str_max_length=10)
+class VideoDiarizationRequest(BaseModel):
+    model_config = ConfigDict()
     model_config['protected_namespaces'] = ()
 
-    video: UimaVideo
-    lang: str
-    video_len: int
-    model_name: str
-    batch_size: int
+    # video: UimaVideo
+    videoBase64: str
+    # lang: str
+    # video_len: int
+    # model_name: str
+    # batch_size: int
     # ignore_max_length_truncation_padding: bool
 
 
-class TextImagerResponse(BaseModel):
-    diarization: VideoDiarization
-    meta: Optional[UimaAnnotationMeta]
-    modification_meta: Optional[UimaDocumentModification]
+class VideoDiarizationResponse(BaseModel):
+    diarization: List[DiarizationResult]
+    modification_meta: Optional[DocumentModification]

@@ -68,30 +68,51 @@
             </features>
         </typeDescription>
         <typeDescription>
-            <name>org.yhcompute.diarization.uima.type.VideoDiarization</name>
+            <name>org.texttechnologylab.annotation.type.MultimediaElement</name>
             <description/>
-            <!-- <supertypeName>uima.tcas.Annotation</supertypeName> -->
+            <supertypeName>uima.tcas.Annotation</supertypeName>
             <features>
                 <featureDescription>
-                    <name>sentences</name>
+                    <name>timeStart</name>
                     <description/>
-                    <rangeTypeName>uima.cas.FSArrayList</rangeTypeName>
-                    <elementType>uima.tcas.Annotation</elementType>
+                    <rangeTypeName>uima.cas.Float</rangeTypeName>
                 </featureDescription>
                 <featureDescription>
-                    <name>videoData</name>
+                    <name>timeEnd</name>
+                    <description/>
+                    <rangeTypeName>uima.cas.Float</rangeTypeName>
+                </featureDescription>
+            </features>
+        </typeDescription>
+        <typeDescription>
+            <name>org.yhcompute.diarization.uima.type.DiarizationResult</name>
+            <description/>
+            <supertypeName>org.texttechnologylab.annotation.type.MultimediaElement</supertypeName>
+            <features>
+                <featureDescription>
+                    <name>value</name>
+                    <description/>
+                    <rangeTypeName>uima.cas.String</rangeTypeName>
+                </featureDescription>
+                <featureDescription>
+                    <name>speaker</name>
                     <description/>
                     <rangeTypeName>uima.cas.String</rangeTypeName>
                 </featureDescription>
             </features>
         </typeDescription>
         <typeDescription>
-            <name>org.yhcompute.diarization.uima.type.VideoBase64</name>
+            <name>org.yhcompute.diarization.uima.type.DiarizationToken</name>
             <description/>
-            <supertypeName>uima.tcas.Annotation</supertypeName>
+            <supertypeName>org.texttechnologylab.annotation.type.MultimediaElement</supertypeName>
             <features>
                 <featureDescription>
-                    <name>base64Video</name>
+                    <name>value</name>
+                    <description/>
+                    <rangeTypeName>uima.cas.String</rangeTypeName>
+                </featureDescription>
+                <featureDescription>
+                    <name>speaker</name>
                     <description/>
                     <rangeTypeName>uima.cas.String</rangeTypeName>
                 </featureDescription>

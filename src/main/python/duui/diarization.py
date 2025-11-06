@@ -1,12 +1,16 @@
-from typing import List, Dict
+from typing import List, Optional
 from pydantic import BaseModel
 
-from .uima import UimaSentence, UimaVideo
+from python.duui.uima import AnnotationMeta
 
+class UimaDiarizationToken(BaseModel):
+    begin: int
+    end: int
+    timeStart: float
+    timeEnd: float
+    text: str
+    speaker: int
 
-class VideoDiarization(BaseModel):
-    video: UimaVideo
-    json: str
-
-    # generated sentences based on the video data
-    sentences: List[UimaSentence]
+class DiarizationResult(BaseModel):
+    tokens: List[UimaDiarizationToken]
+    meta: Optional[AnnotationMeta]

@@ -1,17 +1,14 @@
-import json
+from contextlib import asynccontextmanager
 import logging
 from functools import lru_cache
 from itertools import chain
-import pickle
 from platform import python_version
-import subprocess
 import os
 from sys import version as sys_version
 from threading import Lock
 from time import time
 from typing import Dict, Union
 from datetime import datetime
-import base64
 
 from cassis import load_typesystem
 from fastapi import FastAPI, Response
@@ -19,11 +16,17 @@ from fastapi.responses import PlainTextResponse
 import torch
 from transformers import pipeline, __version__ as transformers_version, AutoTokenizer, AutoImageProcessor
 
-from .duui.reqres import TextImagerResponse, TextImagerRequest
+from .models.HuggingfaceModel import HuggingfaceModel
+
+from .models.TalkNetASD import TalkNetAsdModel
+from .models.whisper import WhisperModel
+
+from .duui.reqres import VideoDiarizationResponse, VideoDiarizationRequest
 # from .duui.sentiment import SentimentSentence, SentimentSelection
 from .duui.service import Settings, TextImagerDocumentation, TextImagerCapability
 from .duui.uima import *
-from .duui.diarization import VideoDiarization
+from .duui.diarization import DiarizationResult
+from . import util
 
 SUPPORTED_MODELS = {
     # **CARDIFFNLP_TRBS,
@@ -41,6 +44,11 @@ SUPPORTED_MODELS = {
     # **CMARKEA_DBS,
 }
 
+MODELS = {
+    "TalkNetASD": TalkNetAsdModel(),
+    "Whisper": WhisperModel()
+}
+
 settings = Settings()
 supported_languages = sorted(list(set(chain(*[m["languages"] for m in SUPPORTED_MODELS.values()]))))
 lru_cache_with_size = lru_cache(maxsize=settings.textimager_duui_transformers_sentiment_model_cache_size)
@@ -55,23 +63,31 @@ logger.info("Version: %s", settings.textimager_duui_transformers_sentiment_annot
 device = 0 if torch.cuda.is_available() else -1
 logger.info(f'USING {device}')
 
-parent_dir = os.path.dirname(os.path.dirname(os.path.realpath(__file__)))
+parent_dir = util.parent_dir
 lightasd_pth = os.path.join(parent_dir, "Light-ASD-main")
-resources_pth = os.path.join(parent_dir, "resources")
+resources_pth = util.resources_pth
 
-# typesystem_filename = parent_dir + '/resources/TypeSystemDiarization.xml'
-# logger.info("Loading typesystem from \"%s\"", typesystem_filename)
-# with open(typesystem_filename, 'rb') as f:
-#     typesystem = load_typesystem(f)
-#     logger.debug("Base typesystem:")
-#     logger.debug(typesystem.to_xml())
+typesystem_filename = os.path.join(parent_dir, "resources", "TypeSystemDiarization.xml")
+logger.info("Loading typesystem from \"%s\"", typesystem_filename)
+with open(typesystem_filename, 'rb') as f:
+    typesystem = load_typesystem(f)
+    logger.debug("Base typesystem:")
+    logger.debug(typesystem.to_xml())
 
-# lua_communication_script_filename = parent_dir + "/lua/duui_diarization.lua"
-# logger.info("Loading Lua communication script from \"%s\"", lua_communication_script_filename)
-# with open(lua_communication_script_filename, 'rb') as f:
-#     lua_communication_script = f.read().decode("utf-8")
-#     logger.debug("Lua communication script:")
-#     logger.debug(lua_communication_script)
+lua_communication_script_filename = os.path.join(parent_dir, "lua", "duui_diarization.lua")
+logger.info("Loading Lua communication script from \"%s\"", lua_communication_script_filename)
+with open(lua_communication_script_filename, 'rb') as f:
+    lua_communication_script = f.read().decode("utf-8")
+    logger.debug("Lua communication script:")
+    logger.debug(lua_communication_script)
+
+def startup():
+    logger.debug("preloading models...")
+    for m in MODELS.values(): 
+        if isinstance(m, HuggingfaceModel):
+            logger.debug("preloading model " + m.model_id)
+            m.preload()
+    logger.debug("finished preloading models")
 
 app = FastAPI(
     openapi_url="/openapi.json",
@@ -90,6 +106,8 @@ app = FastAPI(
         "name": "AGPL",
         "url": "http://www.gnu.org/licenses/agpl-3.0.en.html",
     },
+    # lifespan=startup,
+    on_startup=[startup]
 )
 
 @app.get("/v1/communication_layer", response_class=PlainTextResponse)
@@ -143,77 +161,48 @@ def clean_cuda_cache():
 
 
 @app.post("/v1/process")
-def post_process(request: TextImagerRequest) -> TextImagerResponse:
-    logger.debug("request content:")
-    logger.debug(request)
-    processed_selections = []
-    meta = None
+def post_process(request: VideoDiarizationRequest) -> VideoDiarizationResponse:
+    logger.debug("process detected")
+    # logger.debug(request)
     modification_meta = None
 
     clean_cuda_cache()
 
     dt = datetime.now()
 
-    try:
-        modification_timestamp_seconds = int(time())
+    modification_timestamp_seconds = int(time())
 
-        logger.debug("Received:")
-        logger.debug(request)
-
-        # if request.model_name not in SUPPORTED_MODELS:
-        #     raise Exception(f"Model \"{request.model_name}\" is not supported!")
-
-        # if request.lang not in SUPPORTED_MODELS[request.model_name]["languages"]:
-        #     raise Exception(f"Document language \"{request.lang}\" is not supported by model \"{request.model_name}\"!")
-
-        # logger.info("Using model: \"%s\"", request.model_name)
-        # model_data = SUPPORTED_MODELS[request.model_name]
-        # logger.debug(model_data)
-
-        # processed_video = process_video(request.model_name, model_data, request.video)
-        processed_video = process_video(request.videoBase64)
-        logger.debug("processed video json:")
-        logger.debug(processed_video)
-        
-        video_diarization = VideoDiarization(
-            video = request.video,
-            # sentences = processed_sentences,
-            json = processed_video 
-        )
-        
-        processed_selections.append(
-            VideoDiarization(
-                video = request.video,
-                # sentences = processed_sentences,
-                json = processed_video
+    response = VideoDiarizationResponse(
+                diarization=None,
+                meta=None,
+                modification_meta=None
             )
-            # SentimentSelection(
-            #     selection=selection.selection,
-            #     sentences=processed_sentences
-            # )
-        )
 
-        meta = UimaAnnotationMeta(
-            name=settings.textimager_duui_transformers_sentiment_annotator_name,
-            version=settings.textimager_duui_transformers_sentiment_annotator_version,
-            modelName=request.model_name,
-            # modelVersion=model_data["version"],
-        )
-
-        modification_meta_comment = f"{settings.textimager_duui_transformers_sentiment_annotator_name} ({settings.textimager_duui_transformers_sentiment_annotator_version})"
-        modification_meta = UimaDocumentModification(
-            user="TextImager",
-            timestamp=modification_timestamp_seconds,
-            comment=modification_meta_comment
-        )
-
+    try:
+        for model in MODELS.values():
+            meta = AnnotationMeta(
+                name=settings.textimager_duui_transformers_sentiment_annotator_name,
+                version=settings.textimager_duui_transformers_sentiment_annotator_version,
+                modelName=model.model_name,
+                modelVersion=model.model_version,
+            )
+        
+            logger.debug("using model: \'" + model.model_id + "\'")
+            response = model.process(request)
+            response.meta = meta
     except Exception as ex:
         logger.exception(ex)
 
-    #logger.debug(processed_selections)
-    # for ps in processed_selections:
-    #     for s in ps.sentences:
-    #         logger.debug(s)
+    
+
+    modification_meta_comment = f"{settings.textimager_duui_transformers_sentiment_annotator_name} ({settings.textimager_duui_transformers_sentiment_annotator_version})"
+    modification_meta = DocumentModification(
+        user="SpeakerDiarization",
+        timestamp=modification_timestamp_seconds,
+        comment=modification_meta_comment
+    )
+
+    response.modification_meta = modification_meta
 
     dte = datetime.now()
     print(dte, 'Finished processing', flush=True)
@@ -221,13 +210,7 @@ def post_process(request: TextImagerRequest) -> TextImagerResponse:
 
     clean_cuda_cache()
 
-    return TextImagerResponse(
-        # diarization=video_diarization,
-        json=processed_video,
-        meta=meta,
-        modification_meta=modification_meta
-    )
-
+    return response
 
 @lru_cache_with_size
 def load_model(model_name, model_version, labels_count, adapter_path=None):
@@ -260,44 +243,6 @@ def load_model(model_name, model_version, labels_count, adapter_path=None):
         device=device
     )
 
-
-def map_sentiment(sentiment_result: List[Dict[str, Union[str, float]]], sentiment_mapping: Dict[str, float], sentiment_polarity: Dict[str, List[str]], sentence: UimaSentence) -> VideoDiarization:
-    # get label from top result and map to sentiment values -1, 0 or 1
-    sentiment_value = 0.0
-    top_result = sentiment_result[0]
-    if top_result["label"] in sentiment_mapping:
-        sentiment_value = sentiment_mapping[top_result["label"]]
-
-    # get scores of all labels
-    details = {
-        s["label"]: s["score"]
-        for s in sentiment_result
-    }
-
-    # calculate polarity: pos-neg
-    polarities = {
-        "pos": 0,
-        "neu": 0,
-        "neg": 0
-    }
-    for p in polarities:
-        for l in sentiment_polarity[p]:
-            for s in sentiment_result:
-                if s["label"] == l:
-                    polarities[p] += s["score"]
-
-    polarity = polarities["pos"] - polarities["neg"]
-
-    return VideoDiarization(
-        sentence=sentence,
-        sentiment=sentiment_value,
-        score=top_result["score"],
-        details=details,
-        polarity=polarity,
-        **polarities
-    )
-
-
 def fix_unicode_problems(text):
     # fix emoji in python string and prevent json error on response
     # File "/usr/local/lib/python3.8/site-packages/starlette/responses.py", line 190, in render
@@ -305,240 +250,3 @@ def fix_unicode_problems(text):
     clean_text = text.encode('utf-16', 'surrogatepass').decode('utf-16', 'surrogateescape')
     return clean_text
 
-
-def process_selection(model_name, model_data, selection, doc_len, batch_size, ignore_max_length_truncation_padding):
-    for s in selection.sentences:
-        s.text = fix_unicode_problems(s.text)
-
-    texts = [
-        model_data["preprocess"](s.text)
-        for s in selection.sentences
-    ]
-    logger.debug("Preprocessed texts:")
-    logger.debug(texts)
-
-    with model_lock:
-        model_type = "huggingface" if not "type" in model_data else model_data["type"]
-        if model_type == "local":
-            sentiment_analysis = load_model(model_data["path"], None, len(model_data["mapping"]))
-        elif model_type == "adapter":
-            adapter_model_type = "huggingface" if not "type" in model_data else model_data["type"]
-            adapter_path = model_data["adapter_path"]
-            if adapter_model_type == "local":
-                sentiment_analysis = load_model(model_data["model_path"], None, len(model_data["mapping"]), adapter_path)
-            else:
-                sentiment_analysis = load_model(model_data["model_name"], model_data["model_version"], len(model_data["mapping"]), adapter_path)
-        else:
-            sentiment_analysis = load_model(model_name, model_data["version"], len(model_data["mapping"]))
-
-        if ignore_max_length_truncation_padding:
-            results = sentiment_analysis(
-                texts, batch_size=batch_size
-            )
-        else:
-            results = sentiment_analysis(
-                texts, truncation=True, padding=True, max_length=model_data["max_length"], batch_size=batch_size
-            )
-
-    processed_sentences = [
-        map_sentiment(r, model_data["mapping"], model_data["3sentiment"], s)
-        for s, r
-        in zip(selection.sentences, results)
-    ]
-
-    if len(results) > 1:
-        begin = 0
-        end = doc_len
-
-        sentiments = 0
-        for sentence in processed_sentences:
-            sentiments += sentence.sentiment
-        sentiment = sentiments / len(processed_sentences)
-
-        scores = 0
-        for sentence in processed_sentences:
-            scores += sentence.score
-        score = scores / len(processed_sentences)
-
-        details = {}
-        for sentence in processed_sentences:
-            for d in sentence.details:
-                if d not in details:
-                    details[d] = 0
-                details[d] += sentence.details[d]
-        for d in details:
-            details[d] = details[d] / len(processed_sentences)
-
-        polaritys = 0
-        for sentence in processed_sentences:
-            polaritys += sentence.polarity
-        polarity = polaritys / len(processed_sentences)
-
-        poss = 0
-        for sentence in processed_sentences:
-            poss += sentence.pos
-        pos = poss / len(processed_sentences)
-
-        neus = 0
-        for sentence in processed_sentences:
-            neus += sentence.neu
-        neu = neus / len(processed_sentences)
-
-        negs = 0
-        for sentence in processed_sentences:
-            negs += sentence.neg
-        neg = negs / len(processed_sentences)
-
-        processed_sentences.append(
-            VideoDiarization(
-                sentence=UimaSentence(
-                    text="",
-                    begin=begin,
-                    end=end,
-                ),
-                sentiment=sentiment,
-                score=score,
-                details=details,
-                polarity=polarity,
-                pos=pos,
-                neu=neu,
-                neg=neg
-            )
-        )
-
-    return processed_sentences
-
-# def process_video(model_name, model_data, video: UimaVideo):
-    # diarization_pipeline = load_model(model_data["path"], None, len(model_data["mapping"]))
-    # results = diarization_pipeline(
-    #             video, truncation=True, padding=True, max_length=model_data["max_length"]
-    #         )
-    # cmd = "python demoTalkNet.py --videoName "+ video.name
-    # subprocess.run(cmd)
-    # visualization_json_format(video.name)
-
-
-    # loading model
-    # model_path = "pretrain_TalkSet.model"
-    # if (not os.path.isfile(model_path)):
-    #     link = "1AbN9fCf9IexMxEKXLQY2KYBlb-IhSEea"
-    #     cmd = "gdown --id %s -O %s"%(link, model_path)
-    #     subprocess.call(cmd, shell=True, stdout=None)
-    # loadedState = torch.load(model_path, torch.device('cpu'))
-    # for name, param in loadedState.items():
-    #     origName = name
-    #         if name not in selfState:
-    #             name = name.replace("module.", "")
-    #             if name not in selfState:
-    #                 print("%s is not in the model."%origName)
-    #                 continue
-    #         if selfState[name].size() != loadedState[origName].size():
-    #             sys.stderr.write("Wrong parameter length: %s, model: %s, loaded: %s"%(origName, selfState[name].size(), loadedState[origName].size()))
-    #             continue
-    #         selfState[name].copy_(param)
-
-def process_video(videoBase64: str):
-    video_name = "test-video"
-    if (videoBase64):
-        generate_video_from_base64(videoBase64, video_name)
-    cmd = "python Columbia_test.py --videoName "+ video_name + " --videoFolder " + resources_pth
-    logger.debug("Processing Video")
-    retcode = subprocess.call(cmd, cwd=lightasd_pth)
-    # sp = subprocess.Popen(cmd, cwd=lightasd_pth, shell=True, stdout=subprocess.PIPE)
-    # retcode = sp.stdout.read()
-    logger.debug(retcode)
-    logger.debug("Video Processed")
-    return visualization_json_format(video_name)
-
-def generate_video_from_base64(encodedStr: str, name: str):
-    logger.debug("converting video from base64 string...")
-    video_file = open(resources_pth + name + ".mp4", "wb")
-    video_file.write(base64.b64decode(encodedStr))
-    video_file.close()
-    logger.debug("video generated")
-
-# def load_model():
-#     model_path = "pretrain_TalkSet.model"
-#     if (not os.path.isfile(model_path)):
-#         link = "1AbN9fCf9IexMxEKXLQY2KYBlb-IhSEea"
-#         cmd = "gdown --id %s -O %s"%(link, model_path)
-#         subprocess.call(cmd, shell=True, stdout=None)
-#     loadedState = torch.load(model_path)
-#     for name, param in loadedState.items():
-
-def visualization_json_format(videoName: str, videoPath: str = "resources"):
-    """
-    Converts the ASD into a JSON string
-    """
-    path = os.path.join(parent_dir, videoPath, videoName, "pywork", "tracks.pckl")
-    fil = open(path, "rb")
-    tracks = pickle.load(fil)
-    path = os.path.join(parent_dir, videoPath, videoName, "pywork", "scores.pckl")
-    fil = open(path, "rb")
-    scores = pickle.load(fil)
-
-    # video = cv2.VideoCapture("data/" + videoName + "/pyavi/video.avi")
-    # video_width = int(video.get(cv2.CAP_PROP_FRAME_WIDTH))
-    # video_height = int(video.get(cv2.CAP_PROP_FRAME_HEIGHT))
-    # video.release()
-
-    # Convert face tracks and scores to the desired JSON format
-    output_data = []
-    for track_idx, track in enumerate(tracks):
-        # Get the frame numbers for the current track
-        frames = track["track"]["frame"]
-
-        # Get the bounding box information for the current track
-        boxes = track["proc_track"]
-
-        # Get the speaking scores for the current track
-        # If the track index is out of range, use an empty list
-        speaking_scores = scores[track_idx] if track_idx < len(scores) else []
-
-        for i, frame in enumerate(frames):
-            # Check if the current index is within the valid range of the bounding box information
-            # If not, break the loop and move to the next track
-            if i >= len(boxes["x"]) or i >= len(boxes["y"]) or i >= len(boxes["s"]):
-                break
-
-            # Calculate bounding box coordinates
-            x0 = int(boxes["x"][i] - boxes["s"][i])
-            y0 = int(boxes["y"][i] - boxes["s"][i])
-            x1 = int(boxes["x"][i] + boxes["s"][i])
-            y1 = int(boxes["y"][i] + boxes["s"][i])
-
-            # Determine speaking status
-            speaking = (
-                bool(speaking_scores[i] >= 0) if i < len(speaking_scores) else False
-            )
-
-            # Create the bounding box dictionary
-            box = {
-                "face_id": track_idx,
-                "x0": x0,
-                "y0": y0,
-                "x1": x1,
-                "y1": y1,
-                "speaking": speaking,
-            }
-
-            # Create a dictionary for each frame if it doesn't exist
-            frame_data = next(
-                (
-                    data
-                    for data in output_data
-                    if data["frame_number"] == int(frame)
-                ),
-                None,
-            )
-            if frame_data is None:
-                frame_data = {"frame_number": int(frame), "faces": []}
-                output_data.append(frame_data)
-
-            # Add the current face's bounding box and speaking status to the frame's data
-            frame_data["faces"].append(box)
-
-    # Convert the output data to JSON string
-    json_str = json.dumps(output_data)
-    # Save json file
-    return json_str

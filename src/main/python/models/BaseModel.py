@@ -1,3 +1,4 @@
+from typing import List
 from python.duui.reqres import VideoDiarizationRequest
 from python.duui.diarization import DiarizationResult
 from .ModelType import ModelType
@@ -11,6 +12,8 @@ class BaseModel:
     model_version: str = "0.1"
 
     model_type: ModelType = ModelType.NONE
+
+    languages: List[str] = []
 
     def process(self, request: VideoDiarizationRequest) -> DiarizationResult: 
         raise NotImplementedError()

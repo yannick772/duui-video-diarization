@@ -18,6 +18,7 @@ class TalkNetAsdModel(LocalModel):
     LocalModel.model_id = "TaoRuijie/TalkNet-ASD/pretrain_TalkSet"
     LocalModel.model_version = "1.0"
     LocalModel.path = "models/TaoRuijie/TalkNet-ASD/pretrain_TalkSet.model"
+    LocalModel.languages = []
 
     def process(self, request: VideoDiarizationRequest):
         try:

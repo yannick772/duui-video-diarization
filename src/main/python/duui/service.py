@@ -6,20 +6,20 @@ from pydantic import BaseModel
 # Settings
 class Settings(BaseSettings):
     # Name of annotator
-    textimager_duui_transformers_sentiment_annotator_name: str = "My API"
+    duui_diarization_evaluation_annotator_name: str
 
     # Version of annotator
-    textimager_duui_transformers_sentiment_annotator_version: str = "2.1.0"
+    duui_diarization_evaluation_annotator_version: str
 
     # Log level
-    textimager_duui_transformers_sentiment_log_level: Optional[str] = None
+    duui_diarization_evaluation_log_level: Optional[str]
 
     # Model LRU cache size
-    textimager_duui_transformers_sentiment_model_cache_size: int = 0
+    duui_diarization_evaluation_model_cache_size: int
 
 
 # Capabilities
-class TextImagerCapability(BaseModel):
+class DUUICapability(BaseModel):
     # List of supported languages by the annotator
     supported_languages: List[str]
 
@@ -28,7 +28,7 @@ class TextImagerCapability(BaseModel):
 
 
 # Documentation response
-class TextImagerDocumentation(BaseModel):
+class DUUIDocumentation(BaseModel):
     # Name of this annotator
     annotator_name: str
 
@@ -48,7 +48,7 @@ class TextImagerDocumentation(BaseModel):
     parameters: Optional[dict]
 
     # Capabilities of this annotator
-    capability: TextImagerCapability
+    capability: DUUICapability
 
     # Analysis engine XML, if available
     implementation_specific: Optional[str]

@@ -22,27 +22,10 @@ from .models.TalkNetASD import TalkNetAsdModel
 from .models.whisper import WhisperModel
 
 from .duui.reqres import VideoDiarizationResponse, VideoDiarizationRequest
-# from .duui.sentiment import SentimentSentence, SentimentSelection
-from .duui.service import Settings, TextImagerDocumentation, TextImagerCapability
+from .duui.service import Settings, DUUIDocumentation, DUUICapability
 from .duui.uima import *
 from .duui.diarization import DiarizationResult
 from . import util
-
-SUPPORTED_MODELS = {
-    # **CARDIFFNLP_TRBS,
-    # **CARDIFFNLP_TRBSL,
-    # **CARDIFFNLP_TXRBS,
-    # **NLPTOWN_BBMUS,
-    # **FINITEAUTOMATA_BBSA,
-    # **SIEBERT_SRLE,
-    # **JHARTMANN_SRLE3C,
-    # **LIYUAN_ARSA,
-    # **PHILSHMID_DBMCS2,
-    # **CLAMPERT_MSC19,
-    # **OLIVERGUHR_GSB,
-    # **MDRAW_GNSB,
-    # **CMARKEA_DBS,
-}
 
 MODELS = {
     "TalkNetASD": TalkNetAsdModel(),
@@ -50,15 +33,15 @@ MODELS = {
 }
 
 settings = Settings()
-supported_languages = sorted(list(set(chain(*[m["languages"] for m in SUPPORTED_MODELS.values()]))))
+supported_languages = sorted(list(set(chain(*[m["languages"] for m in MODELS.values()]))))
 lru_cache_with_size = lru_cache(maxsize=settings.textimager_duui_transformers_sentiment_model_cache_size)
 model_lock = Lock()
 
 logging.basicConfig(level=settings.textimager_duui_transformers_sentiment_log_level)
 logger = logging.getLogger(__name__)
 logger.info("TTLab TextImager DUUI Transformers Sentiment")
-logger.info("Name: %s", settings.textimager_duui_transformers_sentiment_annotator_name)
-logger.info("Version: %s", settings.textimager_duui_transformers_sentiment_annotator_version)
+logger.info("Name: %s", settings.duui_diarization_evaluation_annotator_name)
+logger.info("Version: %s", settings.duui_diarization_evaluation_annotator_version)
 
 device = 0 if torch.cuda.is_available() else -1
 logger.info(f'USING {device}')
@@ -67,7 +50,7 @@ parent_dir = util.parent_dir
 lightasd_pth = os.path.join(parent_dir, "Light-ASD-main")
 resources_pth = util.resources_pth
 
-typesystem_filename = os.path.join(parent_dir, "resources", "TypeSystemDiarization.xml")
+typesystem_filename = os.path.join(resources_pth, "TypeSystemDiarization.xml")
 logger.info("Loading typesystem from \"%s\"", typesystem_filename)
 with open(typesystem_filename, 'rb') as f:
     typesystem = load_typesystem(f)
@@ -93,9 +76,9 @@ app = FastAPI(
     openapi_url="/openapi.json",
     docs_url="/api",
     redoc_url=None,
-    title=settings.textimager_duui_transformers_sentiment_annotator_name,
-    description="Transformers-based sentiment analysis for TTLab TextImager DUUI",
-    version=settings.textimager_duui_transformers_sentiment_annotator_version,
+    title=settings.duui_diarization_evaluation_annotator_name,
+    description="DUUI Diarization Evaluation",
+    version=settings.duui_diarization_evaluation_annotator_version,
     terms_of_service="https://www.texttechnologylab.org/legal_notice/",
     contact={
         "name": "TTLab Team",
@@ -115,15 +98,15 @@ def get_communication_layer() -> str:
     return lua_communication_script
 
 @app.get("/v1/documentation")
-def get_documentation() -> TextImagerDocumentation:
-    capabilities = TextImagerCapability(
+def get_documentation() -> DUUIDocumentation:
+    capabilities = DUUICapability(
         supported_languages=supported_languages,
         reproducible=True
     )
 
-    documentation = TextImagerDocumentation(
-        annotator_name=settings.textimager_duui_transformers_sentiment_annotator_name,
-        version=settings.textimager_duui_transformers_sentiment_annotator_version,
+    documentation = DUUIDocumentation(
+        annotator_name=settings.duui_diarization_evaluation_annotator_name,
+        version=settings.duui_diarization_evaluation_annotator_version,
         implementation_lang="Python",
         meta={
             "python_version": python_version(),
@@ -133,7 +116,7 @@ def get_documentation() -> TextImagerDocumentation:
         },
         docker_container_id="[TODO]",
         parameters={
-            "model_name": SUPPORTED_MODELS,
+            "model_name": MODELS.keys(),
         },
         capability=capabilities,
         implementation_specific=None,
@@ -181,8 +164,8 @@ def post_process(request: VideoDiarizationRequest) -> VideoDiarizationResponse:
     try:
         for model in MODELS.values():
             meta = AnnotationMeta(
-                name=settings.textimager_duui_transformers_sentiment_annotator_name,
-                version=settings.textimager_duui_transformers_sentiment_annotator_version,
+                name=settings.duui_diarization_evaluation_annotator_name,
+                version=settings.duui_diarization_evaluation_annotator_version,
                 modelName=model.model_name,
                 modelVersion=model.model_version,
             )
@@ -195,7 +178,7 @@ def post_process(request: VideoDiarizationRequest) -> VideoDiarizationResponse:
 
     
 
-    modification_meta_comment = f"{settings.textimager_duui_transformers_sentiment_annotator_name} ({settings.textimager_duui_transformers_sentiment_annotator_version})"
+    modification_meta_comment = f"{settings.duui_diarization_evaluation_annotator_name} ({settings.duui_diarization_evaluation_annotator_version})"
     modification_meta = DocumentModification(
         user="SpeakerDiarization",
         timestamp=modification_timestamp_seconds,

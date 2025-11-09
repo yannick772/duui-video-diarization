@@ -33,11 +33,11 @@ MODELS = {
 }
 
 settings = Settings()
-supported_languages = sorted(list(set(chain(*[m["languages"] for m in MODELS.values()]))))
-lru_cache_with_size = lru_cache(maxsize=settings.textimager_duui_transformers_sentiment_model_cache_size)
+supported_languages = sorted(list(set(chain(*[m.languages for m in MODELS.values()]))))
+lru_cache_with_size = lru_cache(maxsize=settings.duui_diarization_evaluation_model_cache_size)
 model_lock = Lock()
 
-logging.basicConfig(level=settings.textimager_duui_transformers_sentiment_log_level)
+logging.basicConfig(level=settings.duui_diarization_evaluation_log_level)
 logger = logging.getLogger(__name__)
 logger.info("TTLab TextImager DUUI Transformers Sentiment")
 logger.info("Name: %s", settings.duui_diarization_evaluation_annotator_name)
@@ -89,7 +89,6 @@ app = FastAPI(
         "name": "AGPL",
         "url": "http://www.gnu.org/licenses/agpl-3.0.en.html",
     },
-    # lifespan=startup,
     on_startup=[startup]
 )
 

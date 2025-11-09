@@ -1,8 +1,9 @@
 import logging
 import os
 from transformers import AutoModelForSpeechSeq2Seq, AutoProcessor, pipeline
+
+from src.main.python.duui.reqres import VideoDiarizationRequest, VideoDiarizationResponse
 from .HuggingfaceModel import HuggingfaceModel
-from python.duui.reqres import VideoDiarizationRequest, VideoDiarizationResponse
 from .. import util
 
 logger = logging.getLogger(__name__)
@@ -16,6 +17,8 @@ class WhisperModel(HuggingfaceModel):
     HuggingfaceModel.model_dir = os.path.join(util.tmp_pth, "whisper")
 
     HuggingfaceModel.model_name = "automatic-speech-recognition"
+
+    HuggingfaceModel.languages = ["en"]
 
     def preload(self):
         model = AutoModelForSpeechSeq2Seq.from_pretrained(

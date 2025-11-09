@@ -1,6 +1,6 @@
 from typing import List
-from python.duui.reqres import VideoDiarizationRequest
-from python.duui.diarization import DiarizationResult
+from src.main.python.duui.reqres import VideoDiarizationRequest
+from src.main.python.duui.diarization import DiarizationResult
 from .ModelType import ModelType
 
 class BaseModel:

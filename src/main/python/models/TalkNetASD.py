@@ -3,8 +3,8 @@ import logging
 import os
 import pickle
 import subprocess
-from python.duui.diarization import DiarizationResult, UimaDiarizationToken
-from python.duui.reqres import VideoDiarizationRequest, VideoDiarizationResponse
+from src.main.python.duui.diarization import DiarizationResult, UimaDiarizationToken
+from src.main.python.duui.reqres import VideoDiarizationRequest, VideoDiarizationResponse
 from .. import util
 from .LocalModel import LocalModel
 

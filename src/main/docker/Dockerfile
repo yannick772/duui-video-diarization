@@ -7,7 +7,7 @@ EXPOSE 9714
 RUN DEBIAN_FRONTEND=noninteractive apt-get update && DEBIAN_FRONTEND=noninteractive apt-get install ffmpeg -y
 
 COPY ./requirements.txt ./requirements.txt
-RUN pip install --no-deps -r requirements.txt
+RUN pip install --no-deps --default-timeout=100 -r requirements.txt
 
 # copy util
 COPY ./src/main/python/util.py ./src/main/python/util.py
@@ -25,8 +25,11 @@ COPY ./src/main/python/models/LocalModel.py ./src/main/python/models/LocalModel.
 COPY ./src/main/python/models/HuggingfaceModel.py ./src/main/python/models/HuggingfaceModel.py
 
 # copy model classes
+COPY ./src/main/Light-ASD-main ./src/main/Light-ASD-main
 COPY ./src/main/python/models/TalkNetASD.py ./src/main/python/models/TalkNetASD.py
+RUN python -u ./src/main/python/models/TalkNetASD.py
 COPY ./src/main/python/models/whisper.py ./src/main/python/models/whisper.py
+RUN python -u ./src/main/python/models/whisper.py
 
 COPY ./src/main/resources/TypeSystemDiarization.xml ./src/main/resources/TypeSystemDiarization.xml
 COPY ./src/main/python/diarization_duui.py ./src/main/python/diarization_duui.py

@@ -8,6 +8,8 @@ from .. import util
 
 logger = logging.getLogger(__name__)
 
+INSTANCE = None
+
 class WhisperModel(HuggingfaceModel):
 
     HuggingfaceModel.model_id = "openai/whisper-large-v3"
@@ -27,7 +29,6 @@ class WhisperModel(HuggingfaceModel):
             low_cpu_mem_usage=True,
             use_safetensors=True,
             cache_dir=self.model_dir,
-            # pretrained_model_name_or_path=self.model_id
         )
         model.to(self.device)
 
@@ -69,3 +70,7 @@ class WhisperModel(HuggingfaceModel):
         )
 
         return response
+
+if __name__ == "__main__":
+    INSTANCE = WhisperModel()
+    INSTANCE.preload()

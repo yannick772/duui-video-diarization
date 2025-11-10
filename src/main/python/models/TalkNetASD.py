@@ -3,8 +3,8 @@ import logging
 import os
 import pickle
 import subprocess
-from src.main.python.duui.diarization import DiarizationResult, UimaDiarizationToken
-from src.main.python.duui.reqres import VideoDiarizationRequest, VideoDiarizationResponse
+from main.python.duui.diarization import DiarizationResult, UimaDiarizationToken
+from main.python.duui.reqres import VideoDiarizationRequest, VideoDiarizationResponse
 from .. import util
 from .LocalModel import LocalModel
 
@@ -12,6 +12,8 @@ logger = logging.getLogger(__name__)
 
 lightasd_pth = os.path.join(util.parent_dir, "Light-ASD-main")
 tmp_pth = os.path.join(util.tmp_pth, "ListTalkASD")
+
+INSTANCE = None
 
 class TalkNetAsdModel(LocalModel):
 
@@ -144,3 +146,6 @@ class TalkNetAsdModel(LocalModel):
             result.tokens.append(token)
         
         return result
+    
+if __name__ == "__main__":
+    INSTANCE = TalkNetAsdModel()

@@ -1,4 +1,3 @@
-from contextlib import asynccontextmanager
 import logging
 from functools import lru_cache
 from itertools import chain
@@ -16,20 +15,16 @@ from fastapi.responses import PlainTextResponse
 import torch
 from transformers import pipeline, __version__ as transformers_version, AutoTokenizer, AutoImageProcessor
 
-from .models.HuggingfaceModel import HuggingfaceModel
-
-from .models.TalkNetASD import TalkNetAsdModel
-from .models.whisper import WhisperModel
+from .models import TalkNetASD, whisper
 
 from .duui.reqres import VideoDiarizationResponse, VideoDiarizationRequest
 from .duui.service import Settings, DUUIDocumentation, DUUICapability
 from .duui.uima import *
-from .duui.diarization import DiarizationResult
 from . import util
 
 MODELS = {
-    "TalkNetASD": TalkNetAsdModel(),
-    "Whisper": WhisperModel()
+    "TalkNetASD": TalkNetASD.INSTANCE,
+    "Whisper": whisper.INSTANCE
 }
 
 settings = Settings()
@@ -64,14 +59,6 @@ with open(lua_communication_script_filename, 'rb') as f:
     logger.debug("Lua communication script:")
     logger.debug(lua_communication_script)
 
-def startup():
-    logger.debug("preloading models...")
-    for m in MODELS.values(): 
-        if isinstance(m, HuggingfaceModel):
-            logger.debug("preloading model " + m.model_id)
-            m.preload()
-    logger.debug("finished preloading models")
-
 app = FastAPI(
     openapi_url="/openapi.json",
     docs_url="/api",
@@ -88,8 +75,7 @@ app = FastAPI(
     license_info={
         "name": "AGPL",
         "url": "http://www.gnu.org/licenses/agpl-3.0.en.html",
-    },
-    on_startup=[startup]
+    }
 )
 
 @app.get("/v1/communication_layer", response_class=PlainTextResponse)

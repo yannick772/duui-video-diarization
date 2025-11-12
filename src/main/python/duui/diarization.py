@@ -1,7 +1,7 @@
 from typing import List, Optional
 from pydantic import BaseModel
 
-from src.main.python.duui.uima import AnnotationMeta
+from .uima import AnnotationMeta
 
 class UimaDiarizationToken(BaseModel):
     begin: int

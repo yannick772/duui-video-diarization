@@ -10,15 +10,18 @@ COPY ./requirements.txt ./requirements.txt
 RUN pip install --no-deps --default-timeout=100 -r requirements.txt
 
 # copy util
+COPY ./src/main/python/__init__.py ./src/main/python/__init__.py
 COPY ./src/main/python/util.py ./src/main/python/util.py
 
 # copy duui classes
+COPY ./src/main/python/duui/__init__.py ./src/main/python/duui/__init__.py
 COPY ./src/main/python/duui/diarization.py ./src/main/python/duui/diarization.py
 COPY ./src/main/python/duui/reqres.py ./src/main/python/duui/reqres.py
 COPY ./src/main/python/duui/service.py ./src/main/python/duui/service.py
 COPY ./src/main/python/duui/uima.py ./src/main/python/duui/uima.py
 
 # copy model subclasses
+COPY ./src/main/python/models/__init__.py ./src/main/python/models/__init__.py
 COPY ./src/main/python/models/ModelType.py ./src/main/python/models/ModelType.py
 COPY ./src/main/python/models/BaseModel.py ./src/main/python/models/BaseModel.py
 COPY ./src/main/python/models/LocalModel.py ./src/main/python/models/LocalModel.py
@@ -27,9 +30,11 @@ COPY ./src/main/python/models/HuggingfaceModel.py ./src/main/python/models/Huggi
 # copy model classes
 COPY ./src/main/Light-ASD-main ./src/main/Light-ASD-main
 COPY ./src/main/python/models/TalkNetASD.py ./src/main/python/models/TalkNetASD.py
-RUN python -u ./src/main/python/models/TalkNetASD.py
+# CMD ["python", "-m", "./src/main/python/models/TalkNetASD.py"]
+RUN python -m src.main.python.models.TalkNetASD
 COPY ./src/main/python/models/whisper.py ./src/main/python/models/whisper.py
-RUN python -u ./src/main/python/models/whisper.py
+# CMD ["python", "-m", "./src/main/python/models/whisper.py"]
+RUN python -m src.main.python.models.whisper
 
 COPY ./src/main/resources/TypeSystemDiarization.xml ./src/main/resources/TypeSystemDiarization.xml
 COPY ./src/main/python/diarization_duui.py ./src/main/python/diarization_duui.py

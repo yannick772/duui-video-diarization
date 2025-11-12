@@ -2,7 +2,7 @@ import logging
 import os
 from transformers import AutoModelForSpeechSeq2Seq, AutoProcessor, pipeline
 
-from src.main.python.duui.reqres import VideoDiarizationRequest, VideoDiarizationResponse
+from ..duui.reqres import VideoDiarizationRequest, VideoDiarizationResponse
 from .HuggingfaceModel import HuggingfaceModel
 from .. import util
 
@@ -71,6 +71,5 @@ class WhisperModel(HuggingfaceModel):
 
         return response
 
-if __name__ == "__main__":
-    INSTANCE = WhisperModel()
-    INSTANCE.preload()
+INSTANCE = WhisperModel()
+INSTANCE.preload()

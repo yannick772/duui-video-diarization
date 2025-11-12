@@ -3,8 +3,8 @@ import logging
 import os
 import pickle
 import subprocess
-from main.python.duui.diarization import DiarizationResult, UimaDiarizationToken
-from main.python.duui.reqres import VideoDiarizationRequest, VideoDiarizationResponse
+from ..duui.diarization import DiarizationResult, UimaDiarizationToken
+from ..duui.reqres import VideoDiarizationRequest, VideoDiarizationResponse
 from .. import util
 from .LocalModel import LocalModel
 
@@ -147,5 +147,4 @@ class TalkNetAsdModel(LocalModel):
         
         return result
     
-if __name__ == "__main__":
-    INSTANCE = TalkNetAsdModel()
+INSTANCE = TalkNetAsdModel()

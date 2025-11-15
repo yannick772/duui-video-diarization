@@ -53,6 +53,7 @@ function deserialize(inputCas, inputStream)
             meta_anno:setModelName(meta["modelName"])
             meta_anno:setModelVersion(meta["modelVersion"])
             meta_anno:addToIndexes()
+        end
 
         inputCas:setSofaDataString(entireText, "text/plain")
     end

@@ -7,7 +7,7 @@ function serialize(inputCas, outputStream, parameters)
     local video = inputCas:getSofaDataString()
 
     outputStream:write(json.encode({
-        base64Video = video
+        videoBase64 = video
     }))
 end
 

@@ -4,16 +4,14 @@ import os
 import pickle
 import subprocess
 from ..duui.diarization import DiarizationResult, UimaDiarizationToken
-from ..duui.reqres import VideoDiarizationRequest, VideoDiarizationResponse
+from ..duui.reqres import VideoDiarizationRequest
 from .. import util
 from .LocalModel import LocalModel
 
 logger = logging.getLogger(__name__)
 
 lightasd_pth = os.path.join(util.parent_dir, "Light-ASD-main")
-tmp_pth = os.path.join(util.tmp_pth, "ListTalkASD")
-
-INSTANCE = None
+tmp_pth = os.path.join(util.tmp_pth, "LightTalkASD")
 
 class TalkNetAsdModel(LocalModel):
 
@@ -24,30 +22,14 @@ class TalkNetAsdModel(LocalModel):
 
     def process(self, request: VideoDiarizationRequest):
         try:
-
-            # if request.model_name not in SUPPORTED_MODELS:
-            #     raise Exception(f"Model \"{request.model_name}\" is not supported!")
-
-            # if request.lang not in SUPPORTED_MODELS[request.model_name]["languages"]:
-            #     raise Exception(f"Document language \"{request.lang}\" is not supported by model \"{request.model_name}\"!")
-
-            # logger.info("Using model: \"%s\"", request.model_name)
-            # model_data = SUPPORTED_MODELS[request.model_name]
-            # logger.debug(model_data)
-
-            # processed_video = process_video(request.model_name, model_data, request.video)
             processed_video = self.__process_video(request.videoBase64)
             logger.debug("processed video json:")
             logger.debug(processed_video)
 
+            return processed_video
+
         except Exception as ex:
             logger.exception(ex)
-
-        return VideoDiarizationResponse(
-            json=processed_video,
-            meta = None,
-            modification_meta=None
-        )
 
     def __process_video(self, videoBase64: str):
         video_name = "test-video"

@@ -2,13 +2,13 @@ import logging
 import os
 from transformers import AutoModelForSpeechSeq2Seq, AutoProcessor, pipeline
 
-from ..duui.reqres import VideoDiarizationRequest, VideoDiarizationResponse
+from ..duui.diarization import DiarizationResult
+
+from ..duui.reqres import VideoDiarizationRequest
 from .HuggingfaceModel import HuggingfaceModel
 from .. import util
 
 logger = logging.getLogger(__name__)
-
-INSTANCE = None
 
 class WhisperModel(HuggingfaceModel):
 
@@ -62,14 +62,20 @@ class WhisperModel(HuggingfaceModel):
             logger.exception(ex)
 
         result_text = result["text"]
-        
-        response = VideoDiarizationResponse(
-            json=result_text,
-            meta=None,
-            modification_meta=None
-        )
 
-        return response
+        logger.debug(result_text)
+        
+        diarization_result = self.__text_to_diarization_result(result_text)
+
+        return diarization_result
+    
+    def __text_to_diarization_result(self, text: str):
+        result = DiarizationResult()
+        with open(os.path.join(self.model_dir, "Response.json"), "w") as temp_json_file:
+            temp_json_file.write(text)
+        # TODO: add conversion process
+        return result
+        
 
 INSTANCE = WhisperModel()
 INSTANCE.preload()

@@ -141,8 +141,7 @@ def post_process(request: VideoDiarizationRequest) -> VideoDiarizationResponse:
     modification_timestamp_seconds = int(time())
 
     response = VideoDiarizationResponse(
-                diarization=None,
-                meta=None,
+                diarization=[],
                 modification_meta=None
             )
 
@@ -156,12 +155,11 @@ def post_process(request: VideoDiarizationRequest) -> VideoDiarizationResponse:
             )
         
             logger.debug("using model: \'" + model.model_id + "\'")
-            response = model.process(request)
-            response.meta = meta
+            result = model.process(request)
+            result.meta = meta
+            response.diarization.append(result)
     except Exception as ex:
         logger.exception(ex)
-
-    
 
     modification_meta_comment = f"{settings.duui_diarization_evaluation_annotator_name} ({settings.duui_diarization_evaluation_annotator_version})"
     modification_meta = DocumentModification(

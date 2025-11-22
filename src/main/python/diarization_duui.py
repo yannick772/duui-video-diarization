@@ -150,7 +150,7 @@ def post_process(request: VideoDiarizationRequest) -> VideoDiarizationResponse:
             meta = AnnotationMeta(
                 name=settings.duui_diarization_evaluation_annotator_name,
                 version=settings.duui_diarization_evaluation_annotator_version,
-                modelName=model.model_name,
+                modelName=model.model_id,
                 modelVersion=model.model_version,
             )
         

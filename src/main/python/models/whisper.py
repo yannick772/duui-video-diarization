@@ -47,7 +47,7 @@ class WhisperModel(HuggingfaceModel):
             device=self.device
         )
 
-    def process(self, request: VideoDiarizationRequest):
+    def process(self, request: VideoDiarizationRequest) -> DiarizationResult:
         # dataset = load_dataset("distil-whisper/librispeech_long", "clean", split="validation")
         # sample = dataset[0]["audio"]
 
@@ -69,7 +69,7 @@ class WhisperModel(HuggingfaceModel):
 
         return diarization_result
     
-    def __text_to_diarization_result(self, text: str):
+    def __text_to_diarization_result(self, text: str) -> DiarizationResult:
         result = DiarizationResult()
         with open(os.path.join(self.model_dir, "Response.json"), "w") as temp_json_file:
             temp_json_file.write(text)

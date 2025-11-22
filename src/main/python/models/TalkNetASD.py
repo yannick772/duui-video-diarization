@@ -20,7 +20,7 @@ class TalkNetAsdModel(LocalModel):
     LocalModel.path = "models/TaoRuijie/TalkNet-ASD/pretrain_TalkSet.model"
     LocalModel.languages = []
 
-    def process(self, request: VideoDiarizationRequest):
+    def process(self, request: VideoDiarizationRequest) -> DiarizationResult:
         try:
             processed_video = self.__process_video(request.videoBase64)
             logger.debug("processed video json:")
@@ -31,17 +31,21 @@ class TalkNetAsdModel(LocalModel):
         except Exception as ex:
             logger.exception(ex)
 
-    def __process_video(self, videoBase64: str):
+    def __process_video(self, videoBase64: str) -> DiarizationResult:
         video_name = "test-video"
         video_pth = util.generate_video_from_base64(videoBase64, video_name)
+        if (not os.path.exists(os.path.join(lightasd_pth, "Columbia_test.py"))):
+            logger.warning("TalkNetAsd path was not found")
+            return self.__json_to_diarizaiton_result("{}")
         cmd = "python Columbia_test.py --videoName "+ video_name + " --videoFolder " + os.path.dirname(video_pth)
         logger.debug("Processing Video")
+        logger.debug("running command\n" + cmd + "\nas subprocess in directory\n" + lightasd_pth)
         retcode = subprocess.check_call(cmd, cwd=lightasd_pth)
         logger.debug("Video Processed under retcode: " + str(retcode))
         json_str = self.__visualization_json_format(video_name)
         return self.__json_to_diarizaiton_result(json_str)
 
-    def __visualization_json_format(self, videoName: str, videoPath: str = "resources"):
+    def __visualization_json_format(self, videoName: str, videoPath: str = "resources") -> str:
         """
         Converts the ASD into a JSON string
         """
@@ -118,7 +122,7 @@ class TalkNetAsdModel(LocalModel):
         # Save json file
         return json_str
     
-    def __json_to_diarizaiton_result(json_str: str):
+    def __json_to_diarizaiton_result(json_str: str) -> DiarizationResult:
         result =  DiarizationResult()
         x = util.convert_json_to_object(json_str)
         for item in x:

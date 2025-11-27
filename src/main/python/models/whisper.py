@@ -78,4 +78,4 @@ class WhisperModel(HuggingfaceModel):
         
 
 INSTANCE = WhisperModel()
-INSTANCE.preload()
+# INSTANCE.preload()

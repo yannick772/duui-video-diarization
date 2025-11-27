@@ -23,8 +23,7 @@ class TalkNetAsdModel(LocalModel):
     def process(self, request: VideoDiarizationRequest) -> DiarizationResult:
         try:
             processed_video = self.__process_video(request.videoBase64)
-            logger.debug("processed video json:")
-            logger.debug(processed_video)
+            logger.debug("TalkNetASD video process finished")
 
             return processed_video
 
@@ -33,19 +32,21 @@ class TalkNetAsdModel(LocalModel):
 
     def __process_video(self, videoBase64: str) -> DiarizationResult:
         video_name = "test-video"
-        video_pth = util.generate_video_from_base64(videoBase64, video_name)
+        video_pth = util.generate_video_from_base64(videoBase64, video_name, tmp_pth)
+        lightasd_video_folder = os.path.dirname(video_pth)
         if (not os.path.exists(os.path.join(lightasd_pth, "Columbia_test.py"))):
             logger.warning("TalkNetAsd path was not found")
             return self.__json_to_diarizaiton_result("{}")
-        cmd = "python Columbia_test.py --videoName "+ video_name + " --videoFolder " + os.path.dirname(video_pth)
+        cmd = "python Columbia_test.py --videoName "+ video_name + " --videoFolder " + lightasd_video_folder
         logger.debug("Processing Video")
         logger.debug("running command\n" + cmd + "\nas subprocess in directory\n" + lightasd_pth)
-        retcode = subprocess.check_call(cmd, cwd=lightasd_pth)
-        logger.debug("Video Processed under retcode: " + str(retcode))
+        # retcode = subprocess.check_call(cmd, cwd=lightasd_pth)
+        # logger.debug("Video Processed under retcode: " + str(retcode))
+        os.remove(video_pth)
         json_str = self.__visualization_json_format(video_name)
         return self.__json_to_diarizaiton_result(json_str)
 
-    def __visualization_json_format(self, videoName: str, videoPath: str = "resources") -> str:
+    def __visualization_json_format(self, videoName: str) -> str:
         """
         Converts the ASD into a JSON string
         """
@@ -121,16 +122,20 @@ class TalkNetAsdModel(LocalModel):
         json_str = json.dumps(output_data)
         # Save json file
         return json_str
-    
-    def __json_to_diarizaiton_result(json_str: str) -> DiarizationResult:
+
+    def __json_to_diarizaiton_result(self, json_str: str) -> DiarizationResult:
         result =  DiarizationResult()
         x = util.convert_json_to_object(json_str)
-        for item in x:
-            token = UimaDiarizationToken()
-            token.begin = item["frame_number"]
-            token.speaker = filter(item["faces"], lambda d: bool(d["speaking"]))[0]["face_id"]
-            result.tokens.append(token)
-        
+        for frame in x:
+            frame_speakers = list(filter(lambda d: bool(d.speaking), frame.faces))
+            for frame_speaker in frame_speakers:
+                token = UimaDiarizationToken(
+                    begin=frame.frame_number,
+                    speaker=frame_speaker.face_id
+                )
+                result.tokens.append(token)
+        with open(os.path.join(tmp_pth, "Response.json"), "w") as result_file:
+            result_file.write(util.convert_object_to_json(result))
         return result
     
 INSTANCE = TalkNetAsdModel()

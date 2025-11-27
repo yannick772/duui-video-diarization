@@ -24,7 +24,7 @@ from . import util
 
 MODELS = {
     "TalkNetASD": TalkNetASD.INSTANCE,
-    "Whisper": whisper.INSTANCE
+    # "Whisper": whisper.INSTANCE
 }
 
 settings = Settings()

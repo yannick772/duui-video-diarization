@@ -6,12 +6,15 @@ import org.apache.uima.fit.factory.JCasFactory;
 import org.apache.uima.fit.util.JCasUtil;
 import org.apache.uima.jcas.JCas;
 import org.apache.uima.resource.ResourceInitializationException;
+import org.example.duui.model.DiarizationResult;
+import org.example.duui.model.uima.DiarizationToken;
 import org.texttechnologylab.DockerUnifiedUIMAInterface.DUUIComposer;
 import org.texttechnologylab.DockerUnifiedUIMAInterface.driver.DUUIDockerDriver;
 import org.texttechnologylab.DockerUnifiedUIMAInterface.driver.DUUIRemoteDriver;
 import org.texttechnologylab.DockerUnifiedUIMAInterface.driver.DUUIUIMADriver;
 import org.texttechnologylab.DockerUnifiedUIMAInterface.lua.DUUILuaContext;
 import org.texttechnologylab.annotation.type.AudioToken;
+import org.texttechnologylab.annotation.type.MultimediaElement;
 
 
 import java.io.IOException;
@@ -69,9 +72,11 @@ public class DUUILoader {
         );
         composer.run(cas, "duui-diarization");
 
-        System.out.println(cas.getView("transcript").getDocumentText());
-        for (AudioToken token : JCasUtil.select(cas.getView("transcript"), AudioToken.class)) {
-            System.out.println(token.getTimeStart() + " - " + token.getTimeEnd() + " | " + token.getBegin() + " - " + token.getEnd() + ": " + token.getCoveredText());
+        System.out.println(JCasUtil.select(cas.getView("transcript"), MultimediaElement.class));
+        for (DiarizationResult result : JCasUtil.select(cas.getView("transcript"), DiarizationResult.class)) {
+            for (DiarizationToken token : JCasUtil.select(result.getTokens(), DiarizationToken.class)) {
+                System.out.println(token.getTimeStart() + " - " + token.getTimeEnd() + " | " + token.getBegin() + " - " + token.getEnd() + ": speaker=" + token.getSpeaker());
+            }
         }
     }
 

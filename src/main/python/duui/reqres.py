@@ -11,5 +11,5 @@ class VideoDiarizationRequest(BaseModel):
 
 
 class VideoDiarizationResponse(BaseModel):
-    diarization: List[DiarizationResult]
-    modification_meta: Optional[DocumentModification]
+    diarization: List[DiarizationResult] = []
+    modification_meta: Optional[DocumentModification] = None

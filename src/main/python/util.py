@@ -4,7 +4,9 @@ import os
 import logging
 import subprocess
 from types import SimpleNamespace
-from typing import List 
+from typing import List
+
+from .duui.diarization import DiarizationResult, UimaDiarizationToken 
 
 logger = logging.getLogger(__name__)
 
@@ -59,3 +61,18 @@ def convert_json_to_object(json_str: str) -> List[SimpleNamespace]:
 def convert_object_to_json(object) -> str:
     json_str = json.dumps(object, default=lambda d: d.__dict__)
     return json_str
+
+def compress_diarization_result_tokens(diarization_result: DiarizationResult) -> DiarizationResult:
+    compressed_diarization_result = DiarizationResult()
+    if len(diarization_result.tokens) > 0:
+        compressed_diarization_result.tokens.append(diarization_result.tokens.pop(0))
+        for token in diarization_result.tokens:
+            last_token = compressed_diarization_result.tokens.pop()
+            if token.speaker == last_token.speaker:
+                last_token.end = token.end
+                compressed_diarization_result.tokens.append(last_token)
+            else:
+                compressed_diarization_result.tokens.append(last_token)
+                compressed_diarization_result.tokens.append(token)
+    compressed_diarization_result.meta = diarization_result.meta
+    return compressed_diarization_result

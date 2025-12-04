@@ -6,16 +6,16 @@ from pydantic import BaseModel
 # Settings
 class Settings(BaseSettings):
     # Name of annotator
-    duui_diarization_evaluation_annotator_name: str
+    duui_diarization_evaluation_annotator_name: str = "duui-diarization"
 
     # Version of annotator
-    duui_diarization_evaluation_annotator_version: str
+    duui_diarization_evaluation_annotator_version: str = "unset"
 
     # Log level
-    duui_diarization_evaluation_log_level: Optional[str]
+    duui_diarization_evaluation_log_level: Optional[str] = "DEBUG"
 
     # Model LRU cache size
-    duui_diarization_evaluation_model_cache_size: int
+    duui_diarization_evaluation_model_cache_size: int = 1
 
 
 # Capabilities

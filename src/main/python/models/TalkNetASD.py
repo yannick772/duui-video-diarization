@@ -22,6 +22,7 @@ class TalkNetAsdModel(LocalModel):
 
     def process(self, request: VideoDiarizationRequest) -> DiarizationResult:
         try:
+            logger.debug("Starting TalkNetASD process")
             processed_video = self.__process_video(request.videoBase64)
             logger.debug("TalkNetASD video process finished")
 
@@ -40,8 +41,8 @@ class TalkNetAsdModel(LocalModel):
         cmd = "python Columbia_test.py --videoName "+ video_name + " --videoFolder " + lightasd_video_folder
         logger.debug("Processing Video")
         logger.debug("running command\n" + cmd + "\nas subprocess in directory\n" + lightasd_pth)
-        # retcode = subprocess.check_call(cmd, cwd=lightasd_pth)
-        # logger.debug("Video Processed under retcode: " + str(retcode))
+        retcode = subprocess.check_call(cmd, cwd=lightasd_pth)
+        logger.debug("Video Processed under retcode: " + str(retcode))
         os.remove(video_pth)
         json_str = self.__visualization_json_format(video_name)
         return self.__json_to_diarizaiton_result(json_str)
@@ -131,6 +132,7 @@ class TalkNetAsdModel(LocalModel):
             for frame_speaker in frame_speakers:
                 token = UimaDiarizationToken(
                     begin=frame.frame_number,
+                    end=frame.frame_number + 1,
                     speaker=frame_speaker.face_id
                 )
                 result.tokens.append(token)

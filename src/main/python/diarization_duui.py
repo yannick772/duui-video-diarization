@@ -24,7 +24,7 @@ from . import util
 
 MODELS = {
     "TalkNetASD": TalkNetASD.INSTANCE,
-    # "Whisper": whisper.INSTANCE
+    "Whisper": whisper.INSTANCE,
 }
 
 settings = Settings()
@@ -155,7 +155,7 @@ def post_process(request: VideoDiarizationRequest) -> VideoDiarizationResponse:
             )
         
             logger.debug("using model: \'" + model.model_id + "\'")
-            result = model.process(request)
+            result = util.compress_diarization_result_tokens(model.process(request))
             result.meta = meta
             response.diarization.append(result)
     except Exception as ex:
@@ -175,6 +175,9 @@ def post_process(request: VideoDiarizationRequest) -> VideoDiarizationResponse:
     print('Time elapsed', f'{dte-dt}', flush=True)
 
     clean_cuda_cache()
+
+    with open(os.path.join(resources_pth, "Response.json"), "w") as response_file:
+        response_file.write(util.convert_object_to_json(response))
 
     return response
 

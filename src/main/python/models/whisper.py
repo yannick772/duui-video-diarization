@@ -48,9 +48,6 @@ class WhisperModel(HuggingfaceModel):
         )
 
     def process(self, request: VideoDiarizationRequest) -> DiarizationResult:
-        # dataset = load_dataset("distil-whisper/librispeech_long", "clean", split="validation")
-        # sample = dataset[0]["audio"]
-
         video_path = util.generate_video_from_base64(request.videoBase64, "test-video")
         audio_path = util.extract_audio_from_video(video_path)
 
@@ -78,4 +75,4 @@ class WhisperModel(HuggingfaceModel):
         
 
 INSTANCE = WhisperModel()
-# INSTANCE.preload()
+INSTANCE.preload()

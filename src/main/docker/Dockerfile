@@ -30,10 +30,8 @@ COPY ./src/main/python/models/HuggingfaceModel.py ./src/main/python/models/Huggi
 # copy model classes
 COPY ./src/main/Light-ASD-main ./src/main/Light-ASD-main
 COPY ./src/main/python/models/TalkNetASD.py ./src/main/python/models/TalkNetASD.py
-# CMD ["python", "-m", "./src/main/python/models/TalkNetASD.py"]
 RUN python -m src.main.python.models.TalkNetASD
 COPY ./src/main/python/models/whisper.py ./src/main/python/models/whisper.py
-# CMD ["python", "-m", "./src/main/python/models/whisper.py"]
 RUN python -m src.main.python.models.whisper
 
 COPY ./src/main/resources/TypeSystemDiarization.xml ./src/main/resources/TypeSystemDiarization.xml

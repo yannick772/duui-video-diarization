@@ -15,7 +15,8 @@ from fastapi.responses import PlainTextResponse
 import torch
 from transformers import pipeline, __version__ as transformers_version, AutoTokenizer, AutoImageProcessor
 
-from .models import TalkNetASD, whisper
+from .models import canary_model, gestsync_model, hubert_model, librispeech_model, loconet_model, talknet_model, whisper_model
+from .models.HuggingfaceModel import HuggingfaceModel
 
 from .duui.reqres import VideoDiarizationResponse, VideoDiarizationRequest
 from .duui.service import Settings, DUUIDocumentation, DUUICapability
@@ -23,8 +24,20 @@ from .duui.uima import *
 from . import util
 
 MODELS = {
-    "TalkNetASD": TalkNetASD.INSTANCE,
-    "Whisper": whisper.INSTANCE,
+    # "TalkNetASD": talknet_model.TalkNetAsdModel(),
+    "Whisper": whisper_model.WhisperModel(),
+    # "GestSync": gestsync_model.GestSyncModel(),
+    # "LoCoNet": loconet_model.LoCoNetModel(),
+    # "LibriSpeech": librispeech_model.LibriSpeechModel(),
+    # "Canary": canary_model.CanaryModel(),
+    # "Hubert": hubert_model.HubertModel(),
+    # audio-visuell:
+    # spell
+    # easee-50
+    # video-basiert:
+    # alexshuffle
+    # shufflenet
+    # audio-basiert:
 }
 
 settings = Settings()
@@ -41,7 +54,12 @@ logger.info("Version: %s", settings.duui_diarization_evaluation_annotator_versio
 device = 0 if torch.cuda.is_available() else -1
 logger.info(f'USING {device}')
 
-parent_dir = util.parent_dir
+for model_name, model in MODELS.items():
+    if isinstance(model, HuggingfaceModel):
+        logger.info("preloading Huggingface Model " + model_name)
+        model.preload()
+
+parent_dir = util.python_dir
 lightasd_pth = os.path.join(parent_dir, "Light-ASD-main")
 resources_pth = util.resources_pth
 
@@ -140,10 +158,7 @@ def post_process(request: VideoDiarizationRequest) -> VideoDiarizationResponse:
 
     modification_timestamp_seconds = int(time())
 
-    response = VideoDiarizationResponse(
-                diarization=[],
-                modification_meta=None
-            )
+    response = VideoDiarizationResponse()
 
     try:
         for model in MODELS.values():
@@ -154,7 +169,10 @@ def post_process(request: VideoDiarizationRequest) -> VideoDiarizationResponse:
                 modelVersion=model.model_version,
             )
         
-            logger.debug("using model: \'" + model.model_id + "\'")
+            if (isinstance(model, HuggingfaceModel)):
+                logger.debug("using model: \'" + model.model_id + "\' with version: \'" + model.get_model_revision() + "\'")
+            else:
+                logger.debug("using model: \'" + model.model_id + "\'")
             result = util.compress_diarization_result_tokens(model.process(request))
             result.meta = meta
             response.diarization.append(result)

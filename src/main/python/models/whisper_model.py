@@ -1,0 +1,90 @@
+import logging
+import os
+from transformers import AutoModelForSpeechSeq2Seq, AutoProcessor, pipeline
+
+from ..duui.diarization import DiarizationResult
+
+from ..duui.reqres import VideoDiarizationRequest
+from .HuggingfaceModel import HuggingfaceModel
+from .. import util
+
+logger = logging.getLogger(__name__)
+
+class WhisperModel(HuggingfaceModel):
+
+    HuggingfaceModel.model_id = "openai/whisper-large-v3"
+    # HuggingfaceModel.model_id = "nyrahealth/CrisperWhisper"
+
+    HuggingfaceModel.model_version = "06f233fe06e710322aca913c1bc4249a0d71fce1"
+    # HuggingfaceModel.model_version = "7aefea4c6c009ea7c47e6ab79247dfaf73d4c518"
+
+    HuggingfaceModel.model_dir = os.path.join(util.tmp_pth, "whisper")
+
+    HuggingfaceModel.model_name = "automatic-speech-recognition"
+
+    HuggingfaceModel.languages = ["en"]
+
+    def preload(self):
+        model = AutoModelForSpeechSeq2Seq.from_pretrained(
+            self.model_id,
+            torch_dtype=self.torch_dtype,
+            low_cpu_mem_usage=True,
+            use_safetensors=True,
+            attn_implementation="eager",
+            cache_dir=self.model_dir,
+            revision=self.model_version,
+        )
+        model.to(self.device)
+
+        processor = AutoProcessor.from_pretrained(
+            self.model_id,
+            cache_dir=self.model_dir,
+            revision=self.model_version,
+        )
+
+        self.pipe = pipeline(
+            self.model_name,
+            model=model,
+            tokenizer=processor.tokenizer,
+            revision=self.model_version,
+            feature_extractor=processor.feature_extractor,
+            return_timestamps="word",
+            chunk_length_s=30,
+            batch_size=16,
+            torch_dtype=self.torch_dtype,
+            device=self.device
+        )
+
+    def process(self, request: VideoDiarizationRequest) -> DiarizationResult:
+        video_path = util.generate_video_from_base64(request.videoBase64, "test-video")
+        audio_path = util.extract_audio_from_video(video_path)
+
+        try:
+            logger.debug("Starting Whisper Pipeline...")
+            # with open(audio_path, "rb") as audio_binary:
+            #     result = self.pipe(audio_binary.read())
+            result = self.pipe(audio_path)
+            logger.debug("Whisper Pipeline finished")
+            logger.debug("result:")
+            logger.debug(result)
+        except Exception as ex:
+            logger.exception(ex)
+
+        result_text = result["text"]
+
+        logger.debug(result_text)
+        
+        diarization_result = self.__text_to_diarization_result(util.convert_object_to_json(result))
+
+        return diarization_result
+    
+    def __text_to_diarization_result(self, text: str) -> DiarizationResult:
+        result = DiarizationResult()
+        with open(os.path.join(self.model_dir, "Response.json"), "w") as temp_json_file:
+            temp_json_file.write(text)
+        # TODO: add conversion process
+        return result
+        
+
+# INSTANCE = WhisperModel()
+# INSTANCE.preload()

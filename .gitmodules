@@ -1,0 +1,3 @@
+[submodule "src/main/gestsync"]
+	path = src/main/gestsync
+	url = https://github.com/Sindhu-Hegde/gestsync.git

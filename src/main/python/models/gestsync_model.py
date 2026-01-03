@@ -17,7 +17,7 @@ class GestSyncModel(LocalModel):
 
     LocalModel.model_id = "Sindhu-Hegde/gestsync"
     LocalModel.model_version = "1.0"
-    LocalModel.path = os.path.join(gestsync_pth, "checkpoints", "model_rgb.pth")
+    LocalModel.path = os.path.join(util.resources_pth, "local_models", "gestsync", "model_rgb.pth")
     LocalModel.languages = []
 
     def process(self, request: VideoDiarizationRequest) -> DiarizationResult:

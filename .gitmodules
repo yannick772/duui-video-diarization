@@ -1,3 +1,6 @@
 [submodule "src/main/gestsync"]
 	path = src/main/gestsync
 	url = https://github.com/Sindhu-Hegde/gestsync.git
+[submodule "src/main/syncnet"]
+	path = src/main/syncnet
+	url = https://github.com/joonson/syncnet_python.git

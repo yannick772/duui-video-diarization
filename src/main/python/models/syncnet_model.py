@@ -3,6 +3,9 @@ import logging
 import os
 import pickle
 import subprocess
+
+import numpy
+from scipy import signal
 from ..duui.diarization import DiarizationResult, UimaDiarizationToken
 from ..duui.reqres import VideoDiarizationRequest
 from .. import util
@@ -10,14 +13,14 @@ from .LocalModel import LocalModel
 
 logger = logging.getLogger(__name__)
 
-syncnet_pth = os.path.join(util.parent_dir, "syncnet_python")
+syncnet_pth = os.path.join(util.parent_dir, "syncnet")
 tmp_pth = os.path.join(util.tmp_pth, "syncnet")
 
 class SyncNetModel(LocalModel):
 
     model_id = "joonson/syncnet_python"
     model_version = "1.0"
-    path = os.path.join(util.resources_pth, "local_models", "syncnet", "loconet_ava_best.model")
+    path = os.path.join(util.resources_pth, "local_models", "syncnet", "syncnet_v2.model")
     languages = []
 
     def process(self, request: VideoDiarizationRequest) -> DiarizationResult:
@@ -51,93 +54,60 @@ class SyncNetModel(LocalModel):
         logger.debug("running command\n" + cmd + "\nas subprocess in directory\n" + syncnet_pth)
         retcode = subprocess.check_call(cmd, cwd=syncnet_pth)
         logger.debug("Video Processed under retcode: " + str(retcode))
-        os.remove(video_pth)
-        # json_str = self.__visualization_json_format(video_name)
-        # return self.__json_to_diarizaiton_result(json_str)
-        return self.__json_to_diarizaiton_result("")
+        return self.__video_to_diarizaiton_result(video_name)
 
-    def __visualization_json_format(self, videoName: str) -> str:
+    def __visualization_json_format(self, videoName: str) -> list[list]:
         """
         Converts the ASD into a JSON string
         """
-        path = os.path.join(tmp_pth, videoName, "pywork", "tracks.pckl")
+        path = os.path.join(tmp_pth, "pywork", "tracks.pckl")
         with open(path, "rb") as fil:
             tracks = pickle.load(fil)
-        path = os.path.join(tmp_pth, videoName, "pywork", "scores.pckl")
+        path = os.path.join(tmp_pth, "pywork", "activesd.pckl")
         with open(path, "rb") as fil:
-            scores = pickle.load(fil)
+            dists = pickle.load(fil)
 
-        # video = cv2.VideoCapture("data/" + videoName + "/pyavi/video.avi")
-        # video_width = int(video.get(cv2.CAP_PROP_FRAME_WIDTH))
-        # video_height = int(video.get(cv2.CAP_PROP_FRAME_HEIGHT))
-        # video.release()
+        frames_dir = os.path.join(tmp_pth, "pyframes")
+        frames_amount = len([name for name in os.listdir(frames_dir) if os.path.isfile(os.path.join(frames_dir, name))])
+        logger.debug("found " + str(frames_amount) + " frames in pyframes")
 
-        # Convert face tracks and scores to the desired JSON format
-        output_data = []
-        for track_idx, track in enumerate(tracks):
-            # Get the frame numbers for the current track
-            frames = track["track"]["frame"]
+        faces = [[] for _ in range(frames_amount)]
 
-            # Get the bounding box information for the current track
-            boxes = track["proc_track"]
+        for tidx, track in enumerate(tracks):
+            mean_dists 	=  numpy.mean(numpy.stack(dists[tidx],1),1)
+            minidx 		= numpy.argmin(mean_dists,0)
+            
+            fdist   	= numpy.stack([dist[minidx] for dist in dists[tidx]])
+            fdist   	= numpy.pad(fdist, (3,3), 'constant', constant_values=10)
 
-            # Get the speaking scores for the current track
-            # If the track index is out of range, use an empty list
-            speaking_scores = scores[track_idx] if track_idx < len(scores) else []
+            fconf   = numpy.median(mean_dists) - fdist
+            fconfm  = signal.medfilt(fconf,kernel_size=9)
 
-            for i, frame in enumerate(frames):
-                # Check if the current index is within the valid range of the bounding box information
-                # If not, break the loop and move to the next track
-                if i >= len(boxes["x"]) or i >= len(boxes["y"]) or i >= len(boxes["s"]):
-                    break
+            for fidx, frame in enumerate(track['track']['frame'].tolist()):
+                faces[frame].append({'track': tidx, 'conf':fconfm[fidx], 's':track['proc_track']['s'][fidx], 'x':track['proc_track']['x'][fidx], 'y':track['proc_track']['y'][fidx]})
 
-                # Calculate bounding box coordinates
-                x0 = int(boxes["x"][i] - boxes["s"][i])
-                y0 = int(boxes["y"][i] - boxes["s"][i])
-                x1 = int(boxes["x"][i] + boxes["s"][i])
-                y1 = int(boxes["y"][i] + boxes["s"][i])
+        logger.debug("frames with faces: " + str(len(faces)))
+        return faces
 
-                # Determine speaking status
-                speaking = (
-                    bool(speaking_scores[i] >= 0) if i < len(speaking_scores) else False
-                )
-
-                # Create the bounding box dictionary
-                box = {
-                    "face_id": track_idx,
-                    "x0": x0,
-                    "y0": y0,
-                    "x1": x1,
-                    "y1": y1,
-                    "speaking": speaking,
-                }
-
-                # Create a dictionary for each frame if it doesn't exist
-                frame_data = next(
-                    (
-                        data
-                        for data in output_data
-                        if data["frame_number"] == int(frame)
-                    ),
-                    None,
-                )
-                if frame_data is None:
-                    frame_data = {"frame_number": int(frame), "faces": []}
-                    output_data.append(frame_data)
-
-                # Add the current face's bounding box and speaking status to the frame's data
-                frame_data["faces"].append(box)
-
-        # Convert the output data to JSON string
-        json_str = json.dumps(output_data)
-        # Save json file
-        return json_str
-
-    def __json_to_diarizaiton_result(self, json_str: str) -> DiarizationResult:
+    def __video_to_diarizaiton_result(self, video_name: str) -> DiarizationResult:
         result = DiarizationResult()
-        with open(os.path.join(self.model_dir, "Response.json"), "w") as temp_json_file:
-            temp_json_file.write(json_str)
-        # TODO: add conversion process
+        obj = self.__visualization_json_format(video_name)
+
+        for i, frame_faces in enumerate(obj):
+            if (len(frame_faces) == 0):
+                continue
+            confidences = [face['conf'] for face in frame_faces]
+            tracks = [face['track'] for face in frame_faces]
+            speaker_index = max(range(len(confidences)), key=confidences.__getitem__)
+            if (confidences[speaker_index] > 9):
+                token = UimaDiarizationToken(
+                    begin=i+1,
+                    end=i+2,
+                    speaker=tracks[speaker_index]
+                )
+                result.tokens.append(token)
+        with open(os.path.join(tmp_pth, "Response.json"), "w") as temp_json_file:
+            temp_json_file.write(util.convert_object_to_json(result))
         return result
     
 # INSTANCE = SyncNetModel()

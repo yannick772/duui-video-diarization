@@ -72,11 +72,18 @@ public class DUUILoader {
         );
         composer.run(cas, "duui-diarization");
 
-        System.out.println(JCasUtil.select(cas.getView("transcript"), MultimediaElement.class));
+//        System.out.println(JCasUtil.select(cas.getView("transcript"), MultimediaElement.class));
         for (DiarizationResult result : JCasUtil.select(cas.getView("transcript"), DiarizationResult.class)) {
-            for (DiarizationToken token : JCasUtil.select(result.getTokens(), DiarizationToken.class)) {
-                System.out.println(token.getTimeStart() + " - " + token.getTimeEnd() + " | " + token.getBegin() + " - " + token.getEnd() + ": speaker=" + token.getSpeaker());
-            }
+            System.out.println("Model Name   : " + result.getMeta().getModelName());
+            System.out.println("Speakers     : " + result.getEvaluation().getSpeakers());
+            System.out.println("Avg Length   : " + result.getEvaluation().getAvgLength());
+            System.out.println("Max Length   : " + result.getEvaluation().getMaxLength());
+            System.out.println("Min Length   : " + result.getEvaluation().getMinLength());
+            System.out.println("Speaker Swaps: " + result.getEvaluation().getSpeakerSwaps());
+            System.out.println();
+//            for (DiarizationToken token : JCasUtil.select(result.getTokens(), DiarizationToken.class)) {
+//                System.out.println(token.getTimeStart() + " - " + token.getTimeEnd() + " | " + token.getBegin() + " - " + token.getEnd() + ": speaker=" + token.getSpeaker());
+//            }
         }
     }
 

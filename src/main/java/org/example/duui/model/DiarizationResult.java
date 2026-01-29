@@ -9,6 +9,7 @@ import org.apache.uima.jcas.JCasRegistry;
 import org.apache.uima.jcas.cas.AnnotationBase;
 import org.apache.uima.jcas.cas.FSArray;
 import org.apache.uima.jcas.tcas.Annotation;
+import org.example.duui.model.uima.DiarizationEvaluation;
 import org.example.duui.model.uima.DiarizationToken;
 import org.texttechnologylab.annotation.AnnotatorMetaData;
 
@@ -22,6 +23,7 @@ public class DiarizationResult extends AnnotationBase {
 
     public final static int type = typeIndexID;
 
+    public final static String _FeatName_evaluation = "evaluation";
     public final static String _FeatName_tokens = "tokens";
     public final static String _FeatName_meta = "meta";
 
@@ -30,6 +32,8 @@ public class DiarizationResult extends AnnotationBase {
         return typeIndexID;
     }
 
+    private final static CallSite _FC_evaluation = TypeSystemImpl.createCallSite(DiarizationResult.class, _FeatName_evaluation);
+    private final static MethodHandle _FH_evaluation = _FC_evaluation.dynamicInvoker();
     private final static CallSite _FC_tokens = TypeSystemImpl.createCallSite(DiarizationResult.class, _FeatName_tokens);
     private final static MethodHandle _FH_tokens = _FC_tokens.dynamicInvoker();
     private final static CallSite _FC_meta = TypeSystemImpl.createCallSite(DiarizationResult.class, _FeatName_meta);
@@ -43,6 +47,13 @@ public class DiarizationResult extends AnnotationBase {
         super(t, c);
     }
 
+    public final DiarizationEvaluation getEvaluation() {
+        try {
+            return (DiarizationEvaluation) _FH_evaluation.invokeExact();
+        } catch (Throwable e) {
+            throw new RuntimeException(e); // never happen
+        }
+    }
     public final FSArray<DiarizationToken> getTokens() {
         try {
             return (FSArray<DiarizationToken>) _FH_tokens.invokeExact();

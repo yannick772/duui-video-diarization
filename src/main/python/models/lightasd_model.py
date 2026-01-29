@@ -10,20 +10,20 @@ from .LocalModel import LocalModel
 
 logger = logging.getLogger(__name__)
 
-talknet_pth = os.path.join(util.parent_dir, "TalkNet-ASD")
-tmp_pth = os.path.join(util.tmp_pth, "TalkNet")
+lightasd_pth = os.path.join(util.parent_dir, "Light-ASD-main")
+tmp_pth = os.path.join(util.tmp_pth, "LightTalkASD")
 
-class TalkNetModel(LocalModel):
+class LightAsdModel(LocalModel):
 
-    model_id = "TaoRuijie/TalkNet-ASD"
+    model_id = "Junhua-Liao/Light-ASD"
     model_version = "1.0"
     languages = []
 
     def process(self, request: VideoDiarizationRequest) -> DiarizationResult:
         try:
-            logger.debug("Starting TalkNetASD process")
+            logger.debug("Starting LightASD process")
             processed_video = self.__process_video(request.videoBase64)
-            logger.debug("TalkNetASD video process finished")
+            logger.debug("LightASD video process finished")
 
             return processed_video
 
@@ -33,14 +33,14 @@ class TalkNetModel(LocalModel):
     def __process_video(self, videoBase64: str) -> DiarizationResult:
         video_name = "test-video"
         video_pth = util.generate_video_from_base64(videoBase64, video_name, tmp_pth)
-        talknet_video_folder = os.path.dirname(video_pth)
-        if (not os.path.exists(os.path.join(talknet_pth, "demoTalkNet.py"))):
-            logger.error("TalkNetAsd path was not found")
+        lightasd_video_folder = os.path.dirname(video_pth)
+        if (not os.path.exists(os.path.join(lightasd_pth, "Columbia_test.py"))):
+            logger.error("LightAsd path was not found")
             return self.__json_to_diarizaiton_result("{}")
-        cmd = "python demoTalkNet.py --videoName "+ video_name + " --videoFolder " + talknet_video_folder
+        cmd = "python Columbia_test.py --videoName "+ video_name + " --videoFolder " + lightasd_video_folder
         logger.debug("Processing Video")
-        logger.debug("running command\n" + cmd + "\nas subprocess in directory\n" + talknet_pth)
-        retcode = subprocess.check_call(cmd, cwd=talknet_pth)
+        logger.debug("running command\n" + cmd + "\nas subprocess in directory\n" + lightasd_pth)
+        retcode = subprocess.check_call(cmd, cwd=lightasd_pth)
         logger.debug("Video Processed under retcode: " + str(retcode))
         os.remove(video_pth)
         json_str = self.__visualization_json_format(video_name)
@@ -141,4 +141,4 @@ class TalkNetModel(LocalModel):
             result_file.write(util.convert_object_to_json(util.compress_diarization_result_tokens(result)))
         return result
     
-# INSTANCE = TalkNetModel()
+# INSTANCE = LightAsdModel()

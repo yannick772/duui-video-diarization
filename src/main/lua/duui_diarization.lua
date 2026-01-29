@@ -24,10 +24,9 @@ function deserialize(inputCas, inputStream)
         modification_anno:addToIndexes()
 
         for i, diarization in ipairs["diarization"] do
-            local meta = token["meta"]
+            local meta = diarization["meta"]
 
             local meta_anno = luajava.newInstance("org.texttechnologylab.annotation.AnnotatorMetaData", inputCas)
-            meta_anno:setReference(token_anno)
             meta_anno:setName(meta["name"])
             meta_anno:setVersion(meta["version"])
             meta_anno:setModelName(meta["modelName"])
@@ -55,9 +54,18 @@ function deserialize(inputCas, inputStream)
                 token_list:set(j, token_anno)
             end
 
+            local evaluation = diarization["evaluation"]
+            local evaluation_anno = luajava.newInstance("org.yhcompute.diarization.uima.type.DiarizationEvaluation", inputCas)
+            evaluation_anno:setSpeakers(evaluation["speakers"])
+            evaluation_anno:setAvgLength(evaluation["avgLength"])
+            evaluation_anno:setMaxLength(evaluation["maxLength"])
+            evaluation_anno:setMinLength(evaluation["minLength"])
+            evaluation_anno:setSpeakerSwaps(evaluation["speakerSwaps"])
+
             diarization_anno = luajava.newInstance("org.yhcompute.diarization.uima.type.DiarizationResult", inputCas)
             diarization_anno:setTokens(token_list)
             diarization_anno:setMeta(meta_anno)
+            diarization_anno:setEvaluation(evaluation_anno)
             diarization_anno:addToIndexes()
 
         end

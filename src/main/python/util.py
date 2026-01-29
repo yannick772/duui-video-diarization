@@ -10,14 +10,15 @@ from .duui.diarization import DiarizationResult, UimaDiarizationToken
 
 logger = logging.getLogger(__name__)
 
-parent_dir = os.path.dirname(os.path.dirname(os.path.realpath(__file__)))
+python_dir = os.path.dirname(os.path.realpath(__file__))
+parent_dir = os.path.dirname(python_dir)
 resources_pth = os.path.join(parent_dir, "resources")
 tmp_pth = os.path.join(resources_pth, "tmp")
 
 def generate_video_from_base64(encodedStr: str, name: str, path: str = ""):
     logger.debug("converting video from base64 string...")
     video_file_pth = path if len(path) > 0 else tmp_pth
-    if (not os.path.exists(path)):
+    if (not os.path.exists(video_file_pth)):
         os.makedirs(path)
     video_file_pth = os.path.join(video_file_pth, name + ".mp4")
     # video_file = open(video_file_pth, "wb")
@@ -64,15 +65,19 @@ def convert_object_to_json(object) -> str:
 
 def compress_diarization_result_tokens(diarization_result: DiarizationResult) -> DiarizationResult:
     compressed_diarization_result = DiarizationResult()
+    if diarization_result is None:
+        return compressed_diarization_result
     if len(diarization_result.tokens) > 0:
         compressed_diarization_result.tokens.append(diarization_result.tokens.pop(0))
+        last_token: dict[int, UimaDiarizationToken] = {}
         for token in diarization_result.tokens:
-            last_token = compressed_diarization_result.tokens.pop()
-            if token.speaker == last_token.speaker:
-                last_token.end = token.end
-                compressed_diarization_result.tokens.append(last_token)
+            last_token[token.speaker] = compressed_diarization_result.tokens.pop()
+            lt = last_token.get(token.speaker)
+            if token.speaker == lt.speaker and lt.end == token.end - 1:
+                lt.end = token.end
+                compressed_diarization_result.tokens.append(lt)
             else:
-                compressed_diarization_result.tokens.append(last_token)
+                compressed_diarization_result.tokens.append(lt)
                 compressed_diarization_result.tokens.append(token)
     compressed_diarization_result.meta = diarization_result.meta
     return compressed_diarization_result

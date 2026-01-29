@@ -108,6 +108,8 @@ class SyncNetModel(LocalModel):
                 result.tokens.append(token)
         with open(os.path.join(tmp_pth, "Response.json"), "w") as temp_json_file:
             temp_json_file.write(util.convert_object_to_json(result))
+        with open(os.path.join(tmp_pth, "Response_compress.json"), "w") as result_file:
+            result_file.write(util.convert_object_to_json(util.compress_diarization_result_tokens(result)))
         return result
     
 # INSTANCE = SyncNetModel()

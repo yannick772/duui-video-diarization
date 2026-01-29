@@ -87,17 +87,55 @@
         <typeDescription>
             <name>org.yhcompute.diarization.uima.type.DiarizationResult</name>
             <description/>
-            <supertypeName>org.texttechnologylab.annotation.type.MultimediaElement</supertypeName>
+            <supertypeName>uima.cas.AnnotationBase</supertypeName>
             <features>
                 <featureDescription>
-                    <name>value</name>
+                    <name>evaluation</name>
                     <description/>
-                    <rangeTypeName>uima.cas.String</rangeTypeName>
+                    <rangeTypeName>org.yhcompute.diarization.uima.type.DiarizationEvaluation</rangeTypeName>
                 </featureDescription>
                 <featureDescription>
-                    <name>speaker</name>
+                    <name>tokens</name>
                     <description/>
-                    <rangeTypeName>uima.cas.String</rangeTypeName>
+                    <rangeTypeName>uima.cas.FSArray</rangeTypeName>
+                    <elementType>org.yhcompute.diarization.uima.type.DiarizationToken</elementType>
+                </featureDescription>
+                <featureDescription>
+                    <name>meta</name>
+                    <description/>
+                    <rangeTypeName>org.texttechnologylab.annotation.AnnotatorMetaData</rangeTypeName>
+                </featureDescription>
+            </features>
+        </typeDescription>
+        <typeDescription>
+            <name>org.yhcompute.diarization.uima.type.DiarizationEvaluation</name>
+            <description/>
+            <supertypeName>uima.cas.AnnotationBase</supertypeName>
+            <features>
+                <featureDescription>
+                    <name>speakers</name>
+                    <description/>
+                    <rangeTypeName>uima.cas.Integer</rangeTypeName>
+                </featureDescription>
+                <featureDescription>
+                    <name>avgLength</name>
+                    <description/>
+                    <rangeTypeName>uima.cas.Float</rangeTypeName>
+                </featureDescription>
+                <featureDescription>
+                    <name>maxLength</name>
+                    <description/>
+                    <rangeTypeName>uima.cas.Integer</rangeTypeName>
+                </featureDescription>
+                <featureDescription>
+                    <name>minLength</name>
+                    <description/>
+                    <rangeTypeName>uima.cas.Integer</rangeTypeName>
+                </featureDescription>
+                <featureDescription>
+                    <name>speakerSwaps</name>
+                    <description/>
+                    <rangeTypeName>uima.cas.Integer</rangeTypeName>
                 </featureDescription>
             </features>
         </typeDescription>
